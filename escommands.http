@@ -1,0 +1,219 @@
+GET http://localhost:9200/_cat/indices?v
+Accept: text/plain
+
+###
+
+POST http://localhost:9200/arqmath/_search
+Content-Type: application/json
+
+{
+  "query": {
+    "match_all": {}
+  },
+  "_source": ["title", "database"],
+  "size": 2,
+  "from": 1
+}
+
+###
+
+POST localhost:9200/_analyze
+Content-Type: application/json
+
+{
+  "tokenizer": {"type": "simple_pattern", "pattern": "(m[a-z]+(:[^,)]*|[(])|[)])"},
+  "text": "msub(mo:∂,msub(mi:η,mi:x))"
+}
+
+###
+
+POST localhost:9200/twitter/_mapping?pretty
+Content-Type: application/json
+
+
+{
+  "properties": {
+    "email": {
+      "type": "keyword"
+    }
+  }
+}
+
+
+###
+
+DELETE localhost:9200/arqmath-test
+Content-Type: application/json
+
+###
+
+PUT localhost:9200/arqmath-test
+Content-Type: application/json
+
+{
+  "settings": {
+    "analysis": {
+      "filter": {
+        "custom_english_stemmer": {
+          "type": "stemmer",
+          "name": "english"
+        }
+      },
+      "analyzer": {
+        "arqmath_analyzer": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "asciifolding",
+            "lowercase",
+            "custom_english_stemmer"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "title": {
+        "type": "text",
+        "index": "false"
+      },
+      "content": {
+        "type": "text",
+        "analyzer": "arqmath_analyzer"
+      }
+    }
+  }
+}
+
+###
+
+PUT localhost:9200/arqmath-test/_doc/3
+Content-Type: application/json
+
+{
+  "title": "321",
+  "content": "Let's dance! With empty MOI",
+  "moi": []
+}
+
+###
+
+GET localhost:9200/arqmath-test/_doc/3
+Content-Type: application/json
+
+###
+
+# Lets put new mapping
+PUT localhost:9200/arqmath/_mapping
+Content-Type: application/json
+
+{
+  "properties": {
+    "moi": {
+      "type": "nested",
+      "index": "true"
+    }
+  }
+}
+
+###
+
+# And now lets update doc one with mois
+POST localhost:9200/arqmath-test/_update/1
+Content-Type: application/json
+
+{
+  "doc": {
+    "moi2": [
+      {"md5": "mi:z", "tf": 2},
+      {"md5": "mi:a", "tf": 4}
+    ]
+  }
+}
+###
+
+POST localhost:9200/arqmath-test/_search
+Content-Type: application/json
+
+{
+  "query": {
+    "match": {
+      "content": {
+        "query": "dance"
+      }
+    }
+  }
+}
+
+###
+
+POST localhost:9200/arqmath/_search
+Content-Type: application/json
+
+{
+  "query": {
+    "match_all": {}
+  },
+  "size": 2
+}
+
+###
+GET localhost:9200/arqmath-test/_search
+Content-Type: application/json
+
+{
+  "query": {
+    "nested": {
+      "path": "moi",
+      "query": {
+        "bool": {
+          "must": [
+            {
+              "exists": {
+                "field": "moi.md5"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "size": 2
+}
+
+###
+#               "match_all": {}
+GET localhost:9200/arqmath/_count
+Content-Type: application/json
+
+{
+  "query": {
+    "bool": {
+      "must_not": [
+        {
+          "nested": {
+            "path": "moi",
+            "query": {
+              "exists": {
+                "field": "moi"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+###
+GET localhost:9200/arqmath-test/_search
+Content-Type: application/json
+
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+###

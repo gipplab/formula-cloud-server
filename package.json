@@ -1,0 +1,19 @@
+{
+  "name": "arqmath-elasticsearch",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "@elastic/elasticsearch": "^7.7.0-rc.2",
+    "basex": "^0.9.0",
+    "bluebird": "^3.5.4",
+    "body-parser": "latest",
+    "ejs": "latest",
+    "express": "latest",
+    "line-by-line": "^0.1.6",
+    "p-queue": "^5.0.0",
+    "pidusage": "^2.0.20"
+  },
+  "scripts": {
+    "start": "node libs/arxqmath-processor.js"
+  }
+}

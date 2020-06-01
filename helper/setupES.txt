@@ -1,0 +1,199 @@
+curl -X PUT "localhost:9200/arxiv?pretty" -H 'Content-Type: application/json' -d'
+{
+  "settings": {
+    "analysis": {
+      "filter": {
+        "custom_english_stemmer": {
+          "type": "stemmer",
+          "name": "english"
+        },
+        "english_stopwords": {
+          "type": "stop",
+          "stopwords": "_english_"
+        }
+      },
+      "analyzer": {
+        "arxiv_analyzer": {
+          "tokenizer": "standard",
+          "filter": [
+            "asciifolding",
+            "lowercase",
+            "custom_english_stemmer",
+            "english_stopwords"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "_doc": {
+      "properties": {
+        "title": {
+          "type": "text",
+          "index": "false"
+        },
+        "content": {
+          "type": "text",
+          "analyzer": "arxiv_analyzer"
+        }
+      }
+    }
+  }
+}
+'
+
+curl -X POST "localhost:9200/customer/_update/1?pretty" -H 'Content-Type: application/json' -d'
+{
+  "doc": { "name": "Jane Doe" }
+}
+'
+
+
+curl -X DELETE "localhost:9200/test?pretty"
+curl -X GET "localhost:9200/_cat/indices?v"
+
+curl -X GET "localhost:9200/dlmf-macros/_doc/1?pretty"
+
+curl -X GET "localhost:9200/arxiv/_doc/gr-qc0008046?pretty"
+
+
+curl -X POST "localhost:9200/arxiv-no-problem/_analyze?pretty" -H 'Content-Type: application/json' -d'
+{
+  "analyzer" : "arxiv_analyzer",
+  "text" : "Mass-Energy Equivalence"
+}
+'
+
+curl -X POST "localhost:9200/dlmf-macros/_analyze?pretty" -H 'Content-Type: application/json' -d'
+{
+  "analyzer" : "dlmf_analyzer",
+  "text" : "Gauss hypergeometric function, $\\genhyperF{2}{1} = \\hyperF$"
+}
+'
+
+curl -X POST "localhost:9200/_analyze" -H 'Content-Type: application/json' -d'
+{
+  "analyzer": "standard",
+  "text": "The 2 QUICK Brown-Foxes jumped over the lazy dog\u0027s bone."
+}
+'
+
+
+curl -X PUT "localhost:9200/arqmath_moi/_doc/1?pretty" -H 'Content-Type: application/json' -d'
+{
+  "moi": "msub(mo:∂,msub(mi:η,mi:x))",
+  "complexity": 3,
+  "tf": 42,
+  "df": 2
+}
+'
+
+curl -X GET "localhost:9200/dlmf-macros/_search?pretty" -H 'Content-Type: application/json' -d'
+{
+     "query": {
+         "match": {
+             "description": {
+                 "query": "Jacobi polynomial",
+                 "minimum_should_match": "90%"
+             }
+         }
+     },
+     "_source": [
+         "macro",
+         "tex",
+         "description"
+     ]
+ }
+ '
+
+curl -X POST "localhost:9200/_analyze?pretty" -H 'Content-Type: application/json' -d'
+{
+  "tokenizer": {"type": "simple_pattern", "pattern": "(m[a-z]+(:[^,)]*|[(])|[)])"},
+  "text": "msub(mo:∂,msub(mi:η,mi:x))"
+}
+'
+
+curl -X POST "localhost:9200/arqmath-moi/_search?pretty" -H 'Content-Type: application/json' -d'
+{
+    "query": {
+        "term": {
+            "moi": {
+                "value": "mrow(mrow(merror(mtext:\mathbb),mo:ivt,mi:R),mo:→,mrow(merror(mtext:\mathbb),mo:ivt,mi:R))"
+            }
+        }
+    }
+}
+'
+
+curl -X POST "localhost:9200/arqmath-moi/_search?size=10&pretty" -H 'Content-Type: application/json' -d'
+{
+  "aggs": {
+    "max_complexity": { "max": { "field": "complexity" } }
+  }
+}
+'
+
+curl -X POST "localhost:9200/arqmath-moi/_search?pretty" -H 'Content-Type: application/json' -d'
+{
+  "query": {
+    "bool": {
+      "must": [
+        {"range": {
+          "df": { "gte": 10 }
+        }}
+      ]
+    }
+  },
+  "sort": [
+  {
+    "complexity": {
+      "order": "desc"
+    }
+  },
+  {
+    "df": {
+      "order": "desc"
+    }
+  }],
+  "size": 3
+}
+'
+
+curl -X POST "localhost:9200/test-moi/_search?pretty" -H 'Content-Type: application/json' -d'
+{
+  "sort": [
+  {
+    "complexity": {
+      "order": "desc"
+    }
+  },
+  {
+    "df": {
+      "order": "desc"
+    }
+  }],
+  "size": 3
+}
+'
+
+curl -X POST "localhost:9200/_reindex?pretty" -H 'Content-Type: application/json' -d'
+{
+  "source": {
+    "index": "arqmath"
+  },
+  "dest": {
+    "index": "arqmath-test"
+  }
+}'
+
+curl -X DELETE "localhost:9200/twitter?pretty"
+
+
+'{
+   "query": {
+     "exists": {
+       "field": "moi"
+     }
+   },
+   "size": 2
+ }'

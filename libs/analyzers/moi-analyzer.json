@@ -1,0 +1,35 @@
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "moi_analyzer": {
+          "type": "custom",
+          "tokenizer": "moi_tokenizer"
+        }
+      },
+      "tokenizer": {
+        "moi_tokenizer": {
+          "type": "simple_pattern",
+          "pattern": "(m[a-z]+(:[^,)]*|[(])|[)])"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "moi": {
+        "type": "text",
+        "analyzer": "moi_analyzer"
+      },
+      "complexity": {
+        "type": "short"
+      },
+      "tf": {
+        "type": "integer"
+      },
+      "df": {
+        "type": "integer"
+      }
+    }
+  }
+}

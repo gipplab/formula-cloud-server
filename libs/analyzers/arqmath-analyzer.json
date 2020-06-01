@@ -1,0 +1,35 @@
+{
+  "settings": {
+    "analysis": {
+      "filter": {
+        "custom_english_stemmer": {
+          "type": "stemmer",
+          "name": "english"
+        }
+      },
+      "analyzer": {
+        "arqmath_analyzer": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "asciifolding",
+            "lowercase",
+            "custom_english_stemmer"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "title": {
+        "type": "text",
+        "index": "false"
+      },
+      "content": {
+        "type": "text",
+        "analyzer": "arqmath_analyzer"
+      }
+    }
+  }
+}
