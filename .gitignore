@@ -1,7 +1,10 @@
 node_modules/
-logs/
+
 .idea/
+target/
+
+logs/
 
 report.*.json
-
+*.iml
 package-lock.json

@@ -197,3 +197,58 @@ curl -X DELETE "localhost:9200/twitter?pretty"
    },
    "size": 2
  }'
+
+
+search for MOI
+query: {
+                bool: {
+                    must: [
+                        {
+                            match: {
+                                "moi": {
+                                    query: searchQuery,
+                                    minimum_should_match: "50%"
+                                }
+                            }
+                        }
+                    ],
+                    should: {
+                        match_phrase: {
+                            "moi": {
+                                query: searchQuery,
+                                slop: 10
+                            }
+                        }
+                    },
+                    "filter": [
+                        {
+                            range: {
+                                "complexity": {
+                                    "gte": minC
+                                }
+                            }
+                        },
+                        {
+                            range: {
+                                "tf": {
+                                    "gte": minTF
+                                }
+                            }
+                        },
+                        {
+                            range: {
+                                "df": {
+                                    "gte": minDF
+                                }
+                            }
+                        }
+                    ]
+                }
+            },
+            _source: ["moi", "complexity", "tf", "df"],
+            suggest: {
+                "my-suggestions": {
+                    text: searchQuery,
+                    phrase: {field: "moi"}
+                }
+            }

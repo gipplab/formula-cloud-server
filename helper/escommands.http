@@ -3,14 +3,13 @@ Accept: text/plain
 
 ###
 
-POST http://localhost:9200/arqmath/_search
+POST http://localhost:9200/arqmath-moi/_search
 Content-Type: application/json
 
 {
   "query": {
     "match_all": {}
   },
-  "_source": ["title", "database"],
   "size": 2,
   "from": 1
 }
@@ -27,7 +26,7 @@ Content-Type: application/json
 
 ###
 
-POST localhost:9200/twitter/_mapping?pretty
+POST localhost:9200/arqmath-test-2/_mapping?pretty
 Content-Type: application/json
 
 
@@ -42,12 +41,21 @@ Content-Type: application/json
 
 ###
 
-DELETE localhost:9200/arqmath-test
+DELETE localhost:9200/arqmath-test-2
 Content-Type: application/json
 
 ###
+POST localhost:9200/_reindex
+Content-Type: application/json
 
-PUT localhost:9200/arqmath-test
+{
+  "source": { "index": "arqmath-test" },
+  "dest": { "index": "arqmath-test-2" }
+}
+
+###
+
+PUT localhost:9200/arqmath-test-2
 Content-Type: application/json
 
 {
@@ -81,6 +89,19 @@ Content-Type: application/json
       "content": {
         "type": "text",
         "analyzer": "arqmath_analyzer"
+      },
+      "moi": {
+        "type": "nested",
+        "properties": {
+          "md5": {
+            "type": "keyword",
+            "index": true
+          },
+          "tf": {
+            "type": "integer",
+            "index": true
+          }
+        }
       }
     }
   }
@@ -88,31 +109,49 @@ Content-Type: application/json
 
 ###
 
-PUT localhost:9200/arqmath-test/_doc/3
+PUT localhost:9200/arqmath-test/_doc/2
 Content-Type: application/json
 
 {
-  "title": "321",
-  "content": "Let's dance! With empty MOI",
-  "moi": []
+  "title": "123",
+  "content": "Let's dance! With empty MOI blabla",
+  "moi": [
+    {
+      "tf": "2",
+      "md5": "mi:r"
+    },
+    {
+      "tf": "4",
+      "md5": "mi:Z"
+    }
+  ]
 }
 
 ###
 
-GET localhost:9200/arqmath-test/_doc/3
+GET localhost:9200/arqmath-moi/_doc/9hgHW78E7ueNsGnKAbXdeA==
 Content-Type: application/json
 
 ###
 
 # Lets put new mapping
-PUT localhost:9200/arqmath/_mapping
+PUT localhost:9200/arqmath-test/_mapping
 Content-Type: application/json
 
 {
   "properties": {
     "moi": {
       "type": "nested",
-      "index": "true"
+      "properties": {
+        "md5": {
+          "type": "keyword",
+          "index": true
+        },
+        "tf": {
+          "type": "integer",
+          "index": true
+        }
+      }
     }
   }
 }
@@ -148,7 +187,7 @@ Content-Type: application/json
 
 ###
 
-POST localhost:9200/arqmath/_search
+POST localhost:9200/arqmath-moi/_search
 Content-Type: application/json
 
 {
@@ -190,13 +229,13 @@ Content-Type: application/json
 {
   "query": {
     "bool": {
-      "must_not": [
+      "must": [
         {
           "nested": {
             "path": "moi",
             "query": {
               "exists": {
-                "field": "moi"
+                "field": "moi.moiMD5"
               }
             }
           }
@@ -217,3 +256,45 @@ Content-Type: application/json
 }
 
 ###
+# Calculate the sum of the document length (or in other words,
+# the length of the entire dataset (must be long))
+GET localhost:9200/arqmath-data/_search
+Content-Type: application/json
+
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "nested": {
+            "path": "moi",
+            "query": {
+              "exists": {
+                "field": "moi.moiMD5"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "size": 0,
+  "aggs": {
+    "moi": {
+      "nested": {
+        "path": "moi"
+      },
+      "aggs": {
+        "totaltf": {
+          "sum": {
+            "field": "moi.localTermFrequency"
+          }
+        }
+      }
+    }
+  }
+}
+
+###
+GET localhost:9200/arqmath-moi/_doc/YXtCcpzeQ5SCTMNyjJrQxA==
+Content-Type: application/json

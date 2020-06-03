@@ -1,3 +1,10 @@
+GET http://localhost:9200/_cat/indices?v
+Accept: text/plain
+###
+# Setup mapping for the new index arqmath data
+PUT localhost:9200/arqmath-data
+Content-Type: application/json
+
 {
   "settings": {
     "analysis": {
@@ -45,6 +52,40 @@
           }
         }
       }
+    }
+  }
+}
+
+###
+# finally re-index...
+POST localhost:9200/_reindex
+Content-Type: application/json
+
+{
+  "source": { "index": "arqmath" },
+  "dest": { "index": "arqmath-data" }
+}
+
+###
+# Get the number of documents that contain at least one Math formula
+GET localhost:9200/arqmath-data/_count
+Content-Type: application/json
+
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "nested": {
+            "path": "moi",
+            "query": {
+              "exists": {
+                "field": "moi.moiMD5"
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

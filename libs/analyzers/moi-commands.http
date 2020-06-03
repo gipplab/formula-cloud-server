@@ -1,0 +1,100 @@
+GET http://localhost:9200/_cat/indices?v
+Accept: text/plain
+###
+# Calculate the sum of the document length (or in other words,
+# the length of the entire dataset)
+GET localhost:9200/arqmath-data/_search
+Content-Type: application/json
+
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "nested": {
+            "path": "moi",
+            "query": {
+              "exists": {
+                "field": "moi.moiMD5"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "size": 0,
+  "aggs": {
+    "moi": {
+      "nested": {
+        "path": "moi"
+      },
+      "aggs": {
+        "totaltf": {
+          "sum": {
+            "field": "moi.localTermFrequency"
+          }
+        }
+      }
+    }
+  }
+}
+
+###
+# Get average complexity of all MOI in arqmath.
+# This request doesnt require a "query" because we simply take ALL moi
+# so on query at all equals a match_all: {} query.
+POST localhost:9200/arqmath-moi/_search
+Content-Type: application/json
+
+{
+  "size": 0,
+  "aggs": {
+    "average_complexity": {
+      "avg": {
+        "field": "complexity"
+      }
+    }
+  }
+}
+
+###
+POST localhost:9200/arqmath-moi/_search
+Content-Type: application/json
+
+{
+  "size": 0,
+  "aggs": {
+    "average_complexity": {
+      "avg": {
+        "script": {
+          "lang": "painless",
+          "source": "doc.complexity.value * (doc.tf.value / params.totalTF)",
+          "params": {
+            "totalTF": 143317218
+          }
+        }
+      }
+    }
+  }
+}
+
+###
+POST localhost:9200/arqmath-moi/_search
+Content-Type: application/json
+
+{
+  "size": 0,
+  "aggs": {
+    "weighted_average_complexity": {
+      "weighted_avg": {
+        "value": {
+          "field": "complexity"
+        },
+        "weight": {
+          "field": "tf"
+        }
+      }
+    }
+  }
+}

@@ -3,7 +3,7 @@ const {Client} = require('@elastic/elasticsearch');
 const crypto = require('crypto');
 const hashFunc = crypto.createHash('md5')
 
-var esindex = 'arqmath-moi';
+var esindex = 'arqmath';
 var searchQuery = "";
 var minC = 1;
 var minTF = 1;
@@ -63,53 +63,40 @@ if ( exact ) {
                     must: [
                         {
                             match: {
-                                "moi": {
+                                "content": {
                                     query: searchQuery,
                                     minimum_should_match: "50%"
+                                }
+                            }
+                        },
+                        {
+                            nested: {
+                                path: "moi",
+                                query: {
+                                    exists: {
+                                        field: "moi.moiMD5"
+                                    }
                                 }
                             }
                         }
                     ],
                     should: {
                         match_phrase: {
-                            "moi": {
+                            "content": {
                                 query: searchQuery,
                                 slop: 10
                             }
                         }
-                    },
-                    "filter": [
-                        {
-                            range: {
-                                "complexity": {
-                                    "gte": minC
-                                }
-                            }
-                        },
-                        {
-                            range: {
-                                "tf": {
-                                    "gte": minTF
-                                }
-                            }
-                        },
-                        {
-                            range: {
-                                "df": {
-                                    "gte": minDF
-                                }
-                            }
-                        }
-                    ]
+                    }
                 }
             },
-            _source: ["moi", "complexity", "tf", "df"],
-            suggest: {
-                "my-suggestions": {
-                    text: searchQuery,
-                    phrase: {field: "moi"}
-                }
-            }
+            _source: ["title", "content", "moi", "arxiv"]
+            // suggest: {
+            //     "my-suggestions": {
+            //         text: searchQuery,
+            //         phrase: {field: "moi"}
+            //     }
+            // }
         }
     }, (err, msg) => {
         if (err) {
