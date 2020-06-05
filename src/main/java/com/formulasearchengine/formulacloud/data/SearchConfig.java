@@ -45,6 +45,9 @@ public class SearchConfig {
     @JsonProperty("scoreMerger")
     private MathMergeFunctions scoreMerger = MathMergeFunctions.MAX;
 
+    @JsonProperty("enableMathML")
+    private boolean enableMathML = false;
+
     @JsonProperty("query")
     private final String searchQuery;
 
@@ -150,6 +153,14 @@ public class SearchConfig {
 
     public void setScoreMerger(MathMergeFunctions scoreMerger) {
         this.scoreMerger = scoreMerger;
+    }
+
+    public boolean isEnableMathML() {
+        return enableMathML;
+    }
+
+    public void setEnableMathML(boolean enableMathML) {
+        this.enableMathML = enableMathML;
     }
 
     public String getSearchQuery() {

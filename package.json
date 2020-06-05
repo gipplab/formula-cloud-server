@@ -15,5 +15,8 @@
   },
   "scripts": {
     "start": "node libs/arxqmath-processor.js"
+  },
+  "devDependencies": {
+    "combined-stream": "^1.0.8"
   }
 }

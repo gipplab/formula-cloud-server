@@ -3,7 +3,7 @@ Accept: text/plain
 
 ###
 
-POST http://localhost:9200/arqmath-moi/_search
+POST http://localhost:9200/arqmath-data/_search
 Content-Type: application/json
 
 {
@@ -41,7 +41,7 @@ Content-Type: application/json
 
 ###
 
-DELETE localhost:9200/arqmath-test-2
+DELETE localhost:9200/sinpex-banks
 Content-Type: application/json
 
 ###

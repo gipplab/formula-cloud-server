@@ -1,5 +1,5 @@
 const fs = require('fs');
-const basex = require('basex');
+const basex = require('./basex/index');
 
 let MathElement = function( expression, complexity, tf ) {
     this.expression = expression;
@@ -12,11 +12,12 @@ let BaseXConnector = function( port, databases, xQueryPath ) {
         port: port || 1984,
         databases: databases || ["out"],
         xQuery: fs.readFileSync(
-            xQueryPath || 'libs/basex/extractor.xq',
+            xQueryPath || 'libs/xquery/extractor.xq',
             'utf8'
         )
     };
     this._sessions = {};
+    this._queries = {};
     this._init();
 }
 
@@ -27,6 +28,7 @@ BaseXConnector.prototype._init = function() {
 
         console.log("Init BaseX DB " + value + " on port " + takenPort);
         sessions[value] = new basex.Session('127.0.0.1', takenPort, 'admin', 'admin');
+        this._queries[value] = sessions[value].query(this._options.xQuery);
         sessions[value].execute('OPEN ' + value, (err, resp) => {
             if ( err ) throw err;
             console.log("Successfully initiated BaseX DB: " + resp);
@@ -56,11 +58,13 @@ BaseXConnector.prototype.loadMOIs = async function(id, db = this._options.databa
         }
 
         // console.log("Request MOIs from BaseX for " + id);
-        let client = this._sessions[db];
-        let query = client.query(this._options.xQuery);
+        // let client = this._sessions[db];
+        // let query = client.query(this._options.xQuery);
+        let query = this._queries[db];
 
         query.bind('$docid', id, '', (err, result) => {
             if ( err ) {
+                console.error(err);
                 reject('Unable to bind docID to query. Reason: ' + err);
                 return null;
             }
@@ -81,8 +85,8 @@ BaseXConnector.prototype.loadMOIs = async function(id, db = this._options.databa
     });
 }
 
-// const basexInstance = new BaseXConnector(Number(process.argv[2]), null, null);
-const basexInstance = new BaseXConnector();
+const basexInstance = new BaseXConnector(1984+Number(process.argv[2]), null, null);
+// const basexInstance = new BaseXConnector();
 
 process.on('message', (message) => {
     process.send({
@@ -105,7 +109,13 @@ process.on('message', (message) => {
                     docID: message.docID
                 });
             }
-        });
+        }).catch(err => {
+            console.error(err);
+            process.send({
+                status: '[ERROR]',
+                error: err,
+            });
+        })
 });
 
 module.exports = BaseXConnector = {

@@ -1,5 +1,6 @@
 package com.formulasearchengine.formulacloud;
 
+import com.formulasearchengine.formulacloud.beans.SearchResults;
 import com.formulasearchengine.formulacloud.data.*;
 import com.formulasearchengine.formulacloud.es.ElasticSearchConnector;
 import com.formulasearchengine.formulacloud.es.ElasticsearchConfig;
@@ -24,6 +25,10 @@ public class FormulaCloudSearcher {
         this.elasticsearch = new ElasticSearchConnector(config);
     }
 
+    public void changeConnection(ElasticsearchConfig config) {
+        this.elasticsearch.setupNewConnection(config);
+    }
+
     public void start() {
         LOG.info("Start elasticsearch client");
         this.elasticsearch.start();
@@ -34,9 +39,9 @@ public class FormulaCloudSearcher {
         this.elasticsearch.stop();
     }
 
-    public List<MOIResult> search(SearchConfig searchConfig) {
+    public SearchResults search(SearchConfig searchConfig) {
         RetrievedMOIDocuments retrievedDocs = this.elasticsearch.searchDocuments(searchConfig);
-        return retrievedDocs.getOrderedScoredMOIs();
+        return new SearchResults(searchConfig.getSearchQuery(), retrievedDocs.getOrderedScoredMOIs());
     }
 
     public String getMathMLFromMOIString(String moiString) {
@@ -76,8 +81,8 @@ public class FormulaCloudSearcher {
         System.out.print("> ");
         Scanner scanner = new Scanner(System.in);
         String searchQuery = scanner.next();
-        List<MOIResult> results = searcher.search( new SearchConfig(searchQuery) );
-        FormulaCloudSearcher.print(results, System.out);
+        SearchResults results = searcher.search( new SearchConfig(searchQuery) );
+        FormulaCloudSearcher.print(results.getResults(), System.out);
 
         searcher.stop();
     }

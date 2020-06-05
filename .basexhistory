@@ -1,0 +1,4 @@
+REPO LIST
+REPO INSTALL libs/query/moiModule.xqm
+REPO INSTALL /mnt/share/Projects/formula-cloud-server/libs/query/moiModule.xqm
+exit

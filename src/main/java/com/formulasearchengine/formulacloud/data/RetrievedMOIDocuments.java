@@ -1,5 +1,6 @@
 package com.formulasearchengine.formulacloud.data;
 
+import com.formulasearchengine.formulacloud.beans.MOIMathMLResult;
 import com.formulasearchengine.formulacloud.beans.TFIDFOptions;
 import com.formulasearchengine.formulacloud.beans.TermFrequencies;
 import org.apache.logging.log4j.LogManager;
@@ -48,7 +49,7 @@ public class RetrievedMOIDocuments {
     public List<MOIResult> getOrderedScoredMOIs() {
         LOG.info("Calculate TF-IDF scores");
         return mapToTFIDFElements()
-                .flatMap( RetrievedMOIDocuments::mapToMOIResults )
+                .flatMap( this::mapToMOIResults )
                 .sorted()
                 .sequential() // just make sure we do not
                 .limit(config.getMaxNumberOfResults())
@@ -100,10 +101,15 @@ public class RetrievedMOIDocuments {
         return tf * idf;
     }
 
-    private static Stream<MOIResult> mapToMOIResults( TFIDFMathElement tfidfMathElement ) {
+    private Stream<MOIResult> mapToMOIResults( TFIDFMathElement tfidfMathElement ) {
         Map<String, Double> scores = tfidfMathElement.getScores();
         Collection<MOIResult> results = new LinkedList<>();
-        scores.forEach((docID, score) -> results.add(new MOIResult(tfidfMathElement, docID, "NaN", score)));
+        scores.forEach((docID, score) -> results.add(
+                config.isEnableMathML() ?
+                        new MOIMathMLResult(tfidfMathElement, docID, "Nan", score) :
+                        new MOIResult(tfidfMathElement, docID, "NaN", score)
+                )
+        );
         return results.stream();
     }
 }

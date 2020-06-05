@@ -19,7 +19,7 @@ const basexQueue = new PQueue({
 const fileLoader = new fsconnection.FSConnector(options.in, options.skipLines);
 
 let updateESIndex = async function ( data ) {
-    es.updateIndex(data.mois, data.docID);
+    // es.updateIndex(data.mois, data.docID);
 }
 
 childProcs.setCallbackOnSuccess(updateESIndex);

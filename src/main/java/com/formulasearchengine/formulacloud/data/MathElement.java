@@ -17,10 +17,10 @@ public class MathElement {
     @JsonProperty("moi")
     private String moi;
 
-    @JsonIgnore
+    @JsonProperty("globalDocumentFrequency")
     private int globalDF;
 
-    @JsonIgnore
+    @JsonProperty("globalTermFrequency")
     private int globalTF;
 
     @JsonProperty("complexity")
@@ -99,6 +99,7 @@ public class MathElement {
         return localFrequencies.getOrDefault(docID, 0);
     }
 
+    @JsonIgnore
     public Map<String, Integer> getAllLocalTF() {
         return localFrequencies;
     }

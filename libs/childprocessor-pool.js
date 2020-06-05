@@ -60,8 +60,10 @@ let getProcess = function (resolve, processFile) {
     } else {
         // let portNumber = 1984 + basexCounter;
         // if ( basex ) basexCounter++;
-        // const childProcess = cp.fork(path.join(__dirname, processFile), [portNumber.toString()]);
-        const childProcess = cp.fork(path.join(__dirname, processFile));
+        let portCounter = allProcesses.length % 2;
+        // if ( childprocessorPool.length % 2 === 0 )
+            // const childProcess = cp.fork(path.join(__dirname, processFile), [portNumber.toString()]);
+        const childProcess = cp.fork(path.join(__dirname, processFile), [portCounter.toString()]);
         console.log('Initialize new child process '+childProcess.pid);
         allProcesses.push(childProcess);
         // configure event handler: listening on messages from child process

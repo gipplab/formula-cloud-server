@@ -1,5 +1,7 @@
 package com.formulasearchengine.formulacloud.data;
 
+import java.util.Arrays;
+
 /**
  * This class contains all global information about a dataset.
  * It contains the total number of documents (that contains math),
@@ -34,5 +36,19 @@ public enum Databases {
     @Override
     public String toString() {
         return str;
+    }
+
+    /**
+     * Returns the database object associated with the given string.
+     * @param db the name of the database
+     * @return the object of the database
+     */
+    public static Databases getByString(String db) {
+        if ( db == null || db.isBlank() ) return null;
+        final String normalizedDB = db.toLowerCase().trim();
+        return Arrays.stream(Databases.values())
+                .filter(e -> e.str.toLowerCase().equals(normalizedDB))
+                .findFirst()
+                .orElse(null);
     }
 }

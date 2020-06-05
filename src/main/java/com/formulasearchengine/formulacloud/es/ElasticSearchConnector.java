@@ -53,12 +53,17 @@ public class ElasticSearchConnector {
         this.config = config;
     }
 
+    public void setupNewConnection(ElasticsearchConfig config) {
+        this.config = config;
+        this.start();
+    }
+
     /**
      * Initiates the connection to the server
      */
     public void start(){
         if (client != null){
-            LOG.warn("Restart elasticsearch connection.");
+            LOG.info("Restart elasticsearch connection.");
             stop();
         }
 
@@ -92,6 +97,7 @@ public class ElasticSearchConnector {
 
     public MathElement getMathElementByMD5(String index, String md5) {
         try {
+            if ( !index.endsWith("moi") ) index = index + "-moi";
             GetRequest getRequest = new GetRequest(index, md5);
             GetResponse response = client.get(getRequest, RequestOptions.DEFAULT);
 

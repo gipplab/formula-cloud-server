@@ -1,5 +1,6 @@
 package com.formulasearchengine.formulacloud.data;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jetbrains.annotations.NotNull;
 
@@ -17,6 +18,14 @@ public class MOIResult extends MathElement implements Comparable<MOIResult> {
 
     @JsonProperty(value = "score", required = true)
     private double score;
+
+    // In case of an MOI result, we are not interested in the global TF from the super class
+    @JsonIgnore
+    private int globalTF;
+
+    // In case of an MOI result, we are not interested in the global DF from the super class
+    @JsonIgnore
+    private int globalDF;
 
     private MOIResult() {
         super("");
