@@ -11,7 +11,7 @@ import java.util.Arrays;
 public enum Databases {
     //     NAME       #Math Docs      total # MOI     avg Complexity
     ARXIV("arXiv",       841_000,    2_080_634_554,   4.59                  ),
-    ZBMATH("zbMATH",   1_349_297,       61_355_307,   4.89                  ),
+    ZBMATH("zbMATH",   1_349_297,       61_355_307,   4.8945009855042825    ),
     ARQMATH("ARQMath", 2_058_866,      143_317_218,   5.0007810794366305    );
 
     private final String str;
@@ -46,7 +46,8 @@ public enum Databases {
     public static Databases getByString(String db) {
         if ( db == null || db.isBlank() ) return null;
         final String normalizedDB = db.toLowerCase().trim();
-        return Arrays.stream(Databases.values())
+        return Arrays.stream(
+                Databases.values())
                 .filter(e -> e.str.toLowerCase().equals(normalizedDB))
                 .findFirst()
                 .orElse(null);

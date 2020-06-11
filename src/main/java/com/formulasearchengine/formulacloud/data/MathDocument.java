@@ -5,6 +5,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @author Andre Greiner-Petter
@@ -34,21 +35,29 @@ public class MathDocument {
     }
 
     public void init() {
+        mathElements = mathElements.stream()
+                .filter( m -> {
+                    boolean valid = m.getComplexity() > 0 || m.getMoi() == null || m.getMoi().isBlank();
+                    if ( !valid ) LOG.warn("Filter invalid MOI: " + m.getMoiMD5());
+                    return valid;
+                })
+                .collect(Collectors.toList());
+
         this.maxComplexity = mathElements.stream().map( MathElement::getComplexity ).max(Short::compareTo).orElse((short)0);
         this.avgComplexity = mathElements.stream().mapToDouble( MathElement::getComplexity ).average().orElse(0);
 
         maxCountPerDepthTable = new ArrayList<>();
         mathElements.forEach( m -> {
+            short c = m.getComplexity();
+            if ( c <= 0 ) {
+                LOG.warn("Something is strange, a math element with complexity 0 should not exist. " + m);
+                return;
+            }
+
             if ( this.maxTermFrequency < m.getLocalTF(docID) )
                 this.maxTermFrequency = m.getLocalTF(docID);
 
             documentLength += m.getLocalTF(docID);
-
-            short c = m.getComplexity();
-
-            if ( c <= 0 ) {
-                LOG.warn("Something is strange, a math element with complexity 0 should not exist. " + m);
-            }
 
             while ( maxCountPerDepthTable.size() < c )
                 maxCountPerDepthTable.add(0);

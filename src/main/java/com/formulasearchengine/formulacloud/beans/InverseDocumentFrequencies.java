@@ -1,5 +1,7 @@
 package com.formulasearchengine.formulacloud.beans;
 
+import java.util.Arrays;
+
 /**
  * @author Andre Greiner-Petter
  */
@@ -17,5 +19,12 @@ public enum InverseDocumentFrequencies {
 
     public double calculate(long raw, long total){
         return calculator.calculate(raw, total);
+    }
+
+    public static InverseDocumentFrequencies getInverseDocumentFrequencyByTag(String name) {
+        return Arrays.stream(InverseDocumentFrequencies.values())
+                .filter( tf -> tf.name().toLowerCase().equals(name.toLowerCase()) )
+                .findAny()
+                .orElse(null);
     }
 }

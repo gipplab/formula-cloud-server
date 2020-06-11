@@ -1,0 +1,71 @@
+GET http://localhost:9200/_cat/indices?v
+Accept: text/plain
+###
+DELETE localhost:9200/test
+###
+PUT localhost:9200/test/
+Content-Type: application/json
+
+{
+  "mappings": {
+    "properties": {
+      "fids": {
+        "type": "keyword"
+      }
+    }
+  }
+}
+
+###
+PUT localhost:9200/test/_doc/1
+Content-Type: application/json
+
+{
+
+}
+
+###
+GET localhost:9200/test/_doc/1
+###
+POST localhost:9200/test/_update/2
+Content-Type: application/json
+
+{
+  "script": {
+    "source": "ctx._source.docids.addAll(params.newFids)",
+    "params": {
+      "newFids": ["a", "b"]
+    }
+  }
+}
+
+###
+POST localhost:9200/arqmath-moi/_update/okbFpXNoPCdHP06riJ9Ulg==
+Content-Type: application/json
+
+{
+  "script": {
+    "source": "if (ctx._source.formulaIDs == null) {ctx._source.formulaIDs = []} for ( fid in params.newIDs ) {if (!ctx._source.formulaIDs.contains(fid)) {ctx._source.formulaIDs.add(fid)}}",
+    "params": {
+      "newIDs": ["1"]
+    }
+  }
+}
+
+###
+POST localhost:9200/test/_search
+Content-Type: application/json
+
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "term": {
+            "fids": "c"
+          }
+        }
+      ]
+    }
+  }
+}

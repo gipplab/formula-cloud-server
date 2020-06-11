@@ -1,6 +1,61 @@
 GET http://localhost:9200/_cat/indices?v
 Accept: text/plain
 ###
+DELETE localhost:9200/arxiv-moi
+###
+# Create zbmath-moi index
+PUT localhost:9200/arxiv-moi
+Content-Type: application/json
+
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "moi_analyzer": {
+          "type": "custom",
+          "tokenizer": "moi_tokenizer"
+        }
+      },
+      "tokenizer": {
+        "moi_tokenizer": {
+          "type": "simple_pattern",
+          "pattern": "(m[a-z]+(:[^,)]*|[(])|[)])"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "moi": {
+        "type": "text",
+        "analyzer": "moi_analyzer"
+      },
+      "complexity": {
+        "type": "short"
+      },
+      "tf": {
+        "type": "integer"
+      },
+      "df": {
+        "type": "integer"
+      }
+    }
+  }
+}
+
+###
+PUT localhost:9200/arqmath-moi/_mapping
+Content-Type: application/json
+
+{
+  "properties": {
+    "formulaIDs": {
+      "type": "keyword"
+    }
+  }
+}
+
+###
 # Calculate the sum of the document length (or in other words,
 # the length of the entire dataset)
 GET localhost:9200/arqmath-data/_search
@@ -59,7 +114,7 @@ Content-Type: application/json
 }
 
 ###
-POST localhost:9200/arqmath-moi/_search
+POST localhost:9200/zbmath-moi/_search
 Content-Type: application/json
 
 {
@@ -102,3 +157,45 @@ Content-Type: application/json
 ###
 GET localhost:9200/arqmath-moi/_doc/okbFpXNoPCdHP06riJ9Ulg==
 Content-Type: application/json
+
+###
+# Get the number of documents that contain at least one Math formula
+GET localhost:9200/arqmath-moi/_search
+Content-Type: application/json
+
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "exists": {
+            "field": "formulaIDs"
+          }
+        }
+      ]
+    }
+  }
+}
+
+###
+POST localhost:9200/arqmath-moi/_update/okbFpXNoPCdHP06riJ9Ulg==
+Content-Type: application/json
+
+{
+  "script": {
+    "source": "if (ctx._source.formulaIDs == null) {ctx._source.formulaIDs = []} for ( fid in params.newIDs ) {if (!ctx._source.formulaIDs.contains(fid)) {ctx._source.formulaIDs.add(fid)}}",
+    "params": {
+      "newIDs": ["1"]
+    }
+  }
+}
+
+###
+POST localhost:9200/arqmath-moi/_update/okbFpXNoPCdHP06riJ9Ulg==
+Content-Type: application/json
+
+{
+  "doc": {
+    "formulaIDs": []
+  }
+}

@@ -3,7 +3,7 @@ Accept: text/plain
 
 ###
 
-POST http://localhost:9200/arqmath-data/_search
+POST http://localhost:9200/zbmath/_search
 Content-Type: application/json
 
 {
@@ -22,6 +22,23 @@ Content-Type: application/json
 {
   "tokenizer": {"type": "simple_pattern", "pattern": "(m[a-z]+(:[^,)]*|[(])|[)])"},
   "text": "msub(mo:∂,msub(mi:η,mi:x))"
+}
+
+###
+
+POST localhost:9200/_analyze
+Content-Type: application/json
+
+{
+  "tokenizer": "standard",
+  "char_filter": [
+    "html_strip"
+  ],
+  "filter": [
+    "asciifolding",
+    "lowercase"
+  ],
+  "text": "Let's see if <math id=\"bla\" qid=\"bl2\">f</math> is equal to <math>f(x)</math>"
 }
 
 ###
@@ -246,16 +263,6 @@ Content-Type: application/json
 }
 
 ###
-GET localhost:9200/arqmath-test/_search
-Content-Type: application/json
-
-{
-  "query": {
-    "match_all": {}
-  }
-}
-
-###
 # Calculate the sum of the document length (or in other words,
 # the length of the entire dataset (must be long))
 GET localhost:9200/arqmath-data/_search
@@ -296,5 +303,27 @@ Content-Type: application/json
 }
 
 ###
-GET localhost:9200/arqmath-moi/_doc/YXtCcpzeQ5SCTMNyjJrQxA==
+GET localhost:9200/arqmath-moi/_doc/s38f63Wq5mAfuHrxp3Clog==
 Content-Type: application/json
+
+###
+GET localhost:9200/arqmath/_search
+Content-Type: application/json
+
+{
+  "size": 2,
+  "query": {
+    "match_all": {}
+  }
+}
+
+
+###
+GET localhost:9200/arqmath/_count
+Content-Type: application/json
+
+{
+  "query": {
+    "match_all": {}
+  }
+}

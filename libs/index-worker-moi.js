@@ -16,7 +16,7 @@ const log = function(msg) {
     // console.log("[pid:"+process.pid+"] " + msg);
 };
 
-let indexingDocument = async function (dataArray, esindex) {
+let indexingDocument = function (dataArray, esindex) {
     client.helpers.bulk({
         datasource: dataArray,
         concurrency: 8,
@@ -32,9 +32,9 @@ let indexingDocument = async function (dataArray, esindex) {
         log("successfully indexed bulk.");
         process.send({status: "[DONE]"});
     }).catch((err) => {
-        err.content = "...";
+        // err.content = "...";
         log("something went wrong: " + err);
-        process.send({status: "[ERROR]"});
+        process.send({status: "[ERROR]", error: err});
     });
 };
 

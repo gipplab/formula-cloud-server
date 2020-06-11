@@ -10,7 +10,8 @@ function loadOptions (args) {
         'in': '/mnt/share/data/arqmath/posts/data.csv',
         'exact': false,
         'searchQuery': "",
-        'skipLines': 0
+        'skipLines': 0,
+        'xQueryScript': 'libs/xquery/extractor.xq'
     };
 
     for (let j = 2; j < args.length; j++) {
@@ -39,6 +40,9 @@ function loadOptions (args) {
         } else if (args[j] === "-skipLines"){
             j++;
             options["skipLines"] = Number(args[j]);
+        } else if (args[j] === "-script"){
+            j++;
+            options["xQueryScript"] = args[j];
         } else {
             options["searchQuery"] += " " + args[j];
         }

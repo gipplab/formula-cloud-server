@@ -1,8 +1,10 @@
 GET http://localhost:9200/_cat/indices?v
 Accept: text/plain
 ###
+DELETE localhost:9200/arqmath-data
+###
 # Setup mapping for the new index arqmath data
-PUT localhost:9200/arqmath-data
+PUT localhost:9200/arqmath
 Content-Type: application/json
 
 {
@@ -62,13 +64,13 @@ POST localhost:9200/_reindex
 Content-Type: application/json
 
 {
-  "source": { "index": "arqmath" },
-  "dest": { "index": "arqmath-data" }
+  "source": { "index": "arqmath-data" },
+  "dest": { "index": "arqmath" }
 }
 
 ###
 # Get the number of documents that contain at least one Math formula
-GET localhost:9200/arqmath-data/_count
+GET localhost:9200/zbmath-test/_count
 Content-Type: application/json
 
 {

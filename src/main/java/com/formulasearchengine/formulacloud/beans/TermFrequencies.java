@@ -1,5 +1,7 @@
 package com.formulasearchengine.formulacloud.beans;
 
+import java.util.Arrays;
+
 /**
  * @author Andre Greiner-Petter
  */
@@ -47,5 +49,12 @@ public enum TermFrequencies {
         } else {
             return calculate(tf, docLength, avgDL, k1, b);
         }
+    }
+
+    public static TermFrequencies getTermFrequencyByTag(String name) {
+        return Arrays.stream(TermFrequencies.values())
+                .filter( tf -> tf.name().toLowerCase().equals(name.toLowerCase()) )
+                .findAny()
+                .orElse(null);
     }
 }

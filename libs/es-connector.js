@@ -36,10 +36,12 @@ let index = undefined;
 let ESConnector = function( options ) {
     this._options = options;
     this._updateCache = [];
+    this._updateFidsCache = {};
+    this._currentSize = 0;
 }
 
-ESConnector.prototype.close = function() {
-    client.close();
+ESConnector.prototype.close = async function() {
+    return client.close();
 }
 
 ESConnector.prototype.setIndex = function (newIndex) {
@@ -96,7 +98,7 @@ ESConnector.prototype._manualScrollSearch = async function * () {
     }
 }
 
-ESConnector.prototype._updateChunk = async function (dataArray) {
+ESConnector.prototype._addMOIToText = async function (dataArray) {
     return client.helpers.bulk({
         datasource: dataArray,
         concurrency: 8,
@@ -115,6 +117,38 @@ ESConnector.prototype._updateChunk = async function (dataArray) {
                 }
             ]
         }
+    });
+}
+
+ESConnector.prototype._addMOIFormulaIDs = async function (data) {
+    const body = Object.keys(data).flatMap(moiMD5 => [
+        {
+            update: {
+                _index: index,
+                _id: moiMD5
+            }
+        },
+        {
+            script: {
+                source:
+                    "if (ctx._source.formulaIDs == null) {" +
+                        "ctx._source.formulaIDs = []" +
+                    "}" +
+                    "for ( fid in params.newIDs ) {" +
+                        "if (!ctx._source.formulaIDs.contains(fid)) {" +
+                            "ctx._source.formulaIDs.add(fid)" +
+                        "}" +
+                    "}",
+                params: {
+                    newIDs: data[moiMD5]
+                }
+            }
+        }
+    ]);
+
+    return client.bulk({
+        refresh: true,
+        body
     });
 }
 
@@ -146,15 +180,47 @@ ESConnector.prototype._buildMOIs = function(mathElements, docID) {
 /**
  *
  * @param mathElements {Array<MathElement>}
+ * @private
+ */
+ESConnector.prototype._updateCacheWithFIDs = function(mathElements) {
+    mathElements.map(m => {
+        return {
+            moiMD5: md5Hash.copy().update(m.expression).digest('base64'),
+            formulaIDs: m.formulaIDs
+        }
+    }).forEach(m => {
+        if ( this._updateFidsCache[m.moiMD5] ) {
+            m.formulaIDs.forEach(mFID => {
+                if ( !this._updateFidsCache[m.moiMD5].includes(mFID) )
+                    this._updateFidsCache[m.moiMD5] += mFID + ' ';
+            });
+        } else {
+            this._updateFidsCache[m.moiMD5] = [...m.formulaIDs].join(' ');
+        }
+
+        // if ( this._updateFidsCache[m.moiMD5] ) {
+        //     m.formulaIDs.forEach(mFID => {
+        //         this._updateFidsCache[m.moiMD5].add(mFID)
+        //     });
+        // } else {
+        //     this._updateFidsCache[m.moiMD5] = new Set(m.formulaIDs);
+        // }
+        this._currentSize += m.formulaIDs.length;
+    })
+}
+
+/**
+ *
+ * @param mathElements {Array<MathElement>}
  * @param docID {String}
  */
-ESConnector.prototype.updateIndex = function(mathElements, docID) {
+ESConnector.prototype.addMOIToTextIndex = function(mathElements, docID) {
     if ( this._updateCache.length < chunkSize ) {
         this._updateCache.push(this._buildMOIs(mathElements, docID));
     } else {
         let updateArray = this._updateCache.splice(0, chunkSize);
         this._updateCache.push(this._buildMOIs(mathElements, docID));
-        this._updateChunk(updateArray)
+        this._addMOIToText(updateArray)
             .then((resp) => {
                 console.log("Updated chunk of docs.");
                 console.log(resp);
@@ -166,6 +232,18 @@ ESConnector.prototype.updateIndex = function(mathElements, docID) {
                 console.error(err);
             });
     }
+}
+
+ESConnector.prototype.flushMOIToTextMemory = async function() {
+    return this._addMOIToText(this._updateCache)
+        .then((resp) => {
+            console.log("Updated chunk of docs.");
+            console.log(resp);
+        })
+        .catch((err) => {
+            console.error("Unable to update chunk of documents with MOIs: " + err);
+            console.error(err);
+        });
 }
 
 ESConnector.prototype.flushUpdates = async function() {

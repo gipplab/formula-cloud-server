@@ -1,0 +1,172 @@
+GET http://localhost:9200/_cat/indices?v
+Accept: text/plain
+###
+DELETE localhost:9200/zbmath
+###
+# finally re-index...
+POST localhost:9200/_reindex
+Content-Type: application/json
+
+{
+  "source": { "index": "zbmath-test" },
+  "dest": { "index": "zbmath" }
+}
+###
+# Setup mapping for the new index
+PUT localhost:9200/zbmath/_mapping
+Content-Type: application/json
+
+{
+  "properties": {
+    "moi": {
+      "type": "nested",
+      "properties": {
+        "moiMD5": {
+          "type": "keyword",
+          "index": true
+        },
+        "localTermFrequency": {
+          "type": "integer",
+          "index": true
+        }
+      }
+    }
+  }
+}
+
+###
+# Create zbmath-moi index
+PUT localhost:9200/zbmath-moi
+Content-Type: application/json
+
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "moi_analyzer": {
+          "type": "custom",
+          "tokenizer": "moi_tokenizer"
+        }
+      },
+      "tokenizer": {
+        "moi_tokenizer": {
+          "type": "simple_pattern",
+          "pattern": "(m[a-z]+(:[^,)]*|[(])|[)])"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "moi": {
+        "type": "text",
+        "analyzer": "moi_analyzer"
+      },
+      "complexity": {
+        "type": "short"
+      },
+      "tf": {
+        "type": "integer"
+      },
+      "df": {
+        "type": "integer"
+      }
+    }
+  }
+}
+
+###
+# Reindex zbmath for security and testing
+PUT localhost:9200/zbmath
+Content-Type: application/json
+
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "arxiv_analyzer": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "asciifolding",
+            "lowercase"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "title": {
+        "type": "text",
+        "index": "false"
+      },
+      "content": {
+        "type": "text",
+        "analyzer": "arxiv_analyzer"
+      },
+      "moi": {
+        "type": "nested",
+        "properties": {
+          "moiMD5": {
+            "type": "keyword",
+            "index": true
+          },
+          "localTermFrequency": {
+            "type": "integer",
+            "index": true
+          }
+        }
+      }
+    }
+  }
+}
+
+###
+# Get the number of documents that contain at least one Math formula
+GET localhost:9200/zbmath-test/_count
+Content-Type: application/json
+
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "nested": {
+            "path": "moi",
+            "query": {
+              "exists": {
+                "field": "moi.moiMD5"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+###
+# Get the number of documents that contain at least one Math formula
+GET localhost:9200/zbmath-test/_search
+Content-Type: application/json
+
+{
+  "size": 10,
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "nested": {
+            "path": "moi",
+            "query": {
+              "exists": {
+                "field": "moi.moiMD5"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

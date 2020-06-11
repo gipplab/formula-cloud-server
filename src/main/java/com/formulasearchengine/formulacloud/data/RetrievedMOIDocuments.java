@@ -48,12 +48,29 @@ public class RetrievedMOIDocuments {
 
     public List<MOIResult> getOrderedScoredMOIs() {
         LOG.info("Calculate TF-IDF scores");
+
         return mapToTFIDFElements()
                 .flatMap( this::mapToMOIResults )
+                .collect(
+                        Collectors.groupingBy(
+                                MathElement::getMoiMD5,
+                                Collectors.reducing( (m1, m2) -> m1.merge(m2, config.getScoreMerger()))
+                        )
+                )
+                .values()
+                .stream()
+                .filter( Optional::isPresent )
+                .map( Optional::get )
                 .sorted()
-                .sequential() // just make sure we do not
                 .limit(config.getMaxNumberOfResults())
                 .collect(Collectors.toList());
+
+//        return mapToTFIDFElements()
+//                .flatMap( this::mapToMOIResults )
+//                .sorted()
+//                .sequential() // just make sure we do not
+//                .limit(config.getMaxNumberOfResults())
+//                .collect(Collectors.toList());
     }
 
     public Stream<TFIDFMathElement> mapToTFIDFElements() {

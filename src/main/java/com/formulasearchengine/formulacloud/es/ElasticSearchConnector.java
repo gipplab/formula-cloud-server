@@ -152,6 +152,7 @@ public class ElasticSearchConnector {
         int df = Integer.parseInt(fields.get("df").toString());
         String moi = fields.get("moi").toString();
 
+        LOG.debug("Retrieved: " + moi);
         mathElement.setComplexity(complexity);
         mathElement.setGlobalTermFrequency(tf);
         mathElement.setGlobalDocumentFrequency(df);

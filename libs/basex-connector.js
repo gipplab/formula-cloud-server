@@ -1,13 +1,16 @@
 const fs = require('fs');
 const basex = require('./basex/index');
+const me = require('./mathelement');
 
-let MathElement = function( expression, complexity, tf ) {
-    this.expression = expression;
-    this.complexity = complexity;
-    this.termFrequency = tf;
+let BaseXConnector = function() {
+    this.initialized = false;
 }
 
-let BaseXConnector = function( port, databases, xQueryPath ) {
+// let BaseXConnector = function( port, databases, xQueryPath ) {
+//     this.setup(port, databases, xQueryPath);
+// }
+
+BaseXConnector.prototype.setup = function(port, databases, xQueryPath ) {
     this._options = {
         port: port || 1984,
         databases: databases || ["out"],
@@ -23,24 +26,37 @@ let BaseXConnector = function( port, databases, xQueryPath ) {
 
 BaseXConnector.prototype._init = function() {
     let sessions = this._sessions;
+    const self = this;
     this._options.databases.forEach((value, index) => {
         let takenPort = this._options.port + index;
 
-        console.log("Init BaseX DB " + value + " on port " + takenPort);
+        console.log("Init BaseX Client for DB '" + value + "' on port " + takenPort);
         sessions[value] = new basex.Session('127.0.0.1', takenPort, 'admin', 'admin');
         this._queries[value] = sessions[value].query(this._options.xQuery);
         sessions[value].execute('OPEN ' + value, (err, resp) => {
-            if ( err ) throw err;
-            console.log("Successfully initiated BaseX DB: " + resp);
+            if ( err ) {
+                process.send({
+                    status: '[ERROR]',
+                    message: "Unable to init basex server: " + err
+                })
+            }
+            console.log("Successfully initiated BaseX client on port " + takenPort + " for DB " + value);
+
+            if ( index === self._options.databases.length-1 ) {
+                process.send({
+                    status: '[DONE INIT]'
+                });
+            }
         });
     });
+    this.initialized = true;
 }
 
 BaseXConnector.prototype.close = function() {
     Object.keys(this._sessions).forEach((key, index) => {
         this._sessions[key].close();
     });
-    console.log("Closed all BaseX connections.");
+    console.log("Closed all BaseX connections " + this._options.databases);
     this._sessions = {};
 }
 
@@ -75,8 +91,9 @@ BaseXConnector.prototype.loadMOIs = async function(id, db = this._options.databa
                     reject(err);
                 } else {
                     let mappedValues = data.result.map(line => {
-                        let groups = line.match(/<element.*freq="(\d+)".*depth="(\d+)".*>(.*)<\/element>/m);
-                        return new MathElement(groups[3], groups[2], groups[1]);
+                        let groups =
+                            line.match(/<element.*?freq="(\d+)" depth="(\d+)" fIDs="(.*?)" docIDs="(.*?)">(.*)<\/element>/m);
+                        return new me.MathElement(groups[5], groups[2], groups[1], groups[3], groups[4]);
                     });
                     resolve(mappedValues);
                 }
@@ -85,10 +102,24 @@ BaseXConnector.prototype.loadMOIs = async function(id, db = this._options.databa
     });
 }
 
-const basexInstance = new BaseXConnector(1984+Number(process.argv[2]), null, null);
-// const basexInstance = new BaseXConnector();
+// const basexInstance = new BaseXConnector(1984+Number(process.argv[2]), null, null);
+let basexInstance = new BaseXConnector();
+basexInstance.setup(
+    Number(process.argv[2]),
+    process.argv.slice(4, process.argv.length),
+    process.argv[3]
+);
 
-process.on('message', (message) => {
+process.on('message', async (message) => {
+    if ( message.shutdown ) {
+        console.log("["+process.pid+"] received shutdown request. Shutdown basex connections.");
+        basexInstance.close();
+        process.send({
+            status: '[SHUTDOWN]'
+        });
+        return;
+    }
+
     process.send({
         status: '[RUN]',
         memoryUsed: process.memoryUsage().heapUsed,
@@ -106,7 +137,8 @@ process.on('message', (message) => {
                 process.send({
                     status: '[DONE]',
                     mois: values,
-                    docID: message.docID
+                    docID: message.docID,
+                    database: message.database
                 });
             }
         }).catch(err => {
@@ -119,6 +151,5 @@ process.on('message', (message) => {
 });
 
 module.exports = BaseXConnector = {
-    BaseXConnector: BaseXConnector,
-    MathElement: MathElement
+    BaseXConnector: BaseXConnector
 }

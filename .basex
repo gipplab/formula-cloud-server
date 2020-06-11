@@ -1,6 +1,6 @@
 # General Options
 DEBUG = false
-DBPATH = /opt/basex/data-arqmath
+DBPATH = /opt/basex/data-zbmath
 LOGPATH = /mnt/share/Projects/formula-cloud-server/logs
 REPOPATH = /opt/basex/repo
 LANG = English

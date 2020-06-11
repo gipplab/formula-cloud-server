@@ -1,31 +1,25 @@
 package com.formulasearchengine.formulacloud.data;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.formulasearchengine.formulacloud.beans.MathMergeFunctions;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * @author Andre Greiner-Petter
  */
+@SuppressWarnings("unused")
 public class MOIResult extends MathElement implements Comparable<MOIResult> {
     @JsonProperty("docID")
-    private String docID;
+    private final List<String> docID = new LinkedList<>();
 
     @JsonProperty("formulaID")
-    private String formulaID;
+    private final List<String> formulaID = new LinkedList<>();
 
     @JsonProperty(value = "score", required = true)
     private double score;
-
-    // In case of an MOI result, we are not interested in the global TF from the super class
-    @JsonIgnore
-    private int globalTF;
-
-    // In case of an MOI result, we are not interested in the global DF from the super class
-    @JsonIgnore
-    private int globalDF;
 
     private MOIResult() {
         super("");
@@ -33,16 +27,16 @@ public class MOIResult extends MathElement implements Comparable<MOIResult> {
 
     public MOIResult(MathElement copy, String docID, String formulaID, double score) {
         super(copy);
-        this.docID = docID;
-        this.formulaID = formulaID;
+        this.docID.add(docID);
+        this.formulaID.add(formulaID);
         this.score = score;
     }
 
-    public String getDocID() {
+    public List<String> getDocID() {
         return docID;
     }
 
-    public String getFormulaID() {
+    public List<String> getFormulaID() {
         return formulaID;
     }
 
@@ -70,5 +64,17 @@ public class MOIResult extends MathElement implements Comparable<MOIResult> {
                 score,
                 super.toString()
         );
+    }
+
+    public MOIResult merge(MOIResult reference, MathMergeFunctions mergeFunction) {
+        this.score = mergeFunction.calculate(this.score, reference.score);
+        reference.formulaID.forEach( fid -> {
+            if ( !formulaID.contains(fid) ) formulaID.add(fid);
+        });
+        reference.docID.forEach( fid -> {
+            if ( !docID.contains(fid) ) docID.add(fid);
+        });
+        reference.getAllLocalTF().forEach(super.getAllLocalTF()::putIfAbsent);
+        return this;
     }
 }
