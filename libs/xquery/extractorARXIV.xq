@@ -12,8 +12,8 @@ import module namespace moi = "http://www.moi.org/arxiv" at "libs/xquery/moiModu
 declare namespace mws = "http://search.mathweb.org/ns";
 declare default element namespace "http://www.w3.org/1998/Math/MathML";
 
-declare variable $dataDocID external;
+declare variable $docid external;
 declare variable $minDocFreq := 1;
-declare variable $docs := /mws:harvest[@data-doc-id=$dataDocID];
+declare variable $docs := /mws:harvest[@data-doc-id=$docid];
 
 moi:extractTerms($docs, $minDocFreq)
