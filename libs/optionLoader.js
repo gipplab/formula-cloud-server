@@ -11,6 +11,7 @@ function loadOptions (args) {
         'exact': false,
         'searchQuery': "",
         'skipLines': 0,
+        'maxClientsPerServer': 1,
         'xQueryScript': 'libs/xquery/extractor.xq'
     };
 
@@ -40,6 +41,9 @@ function loadOptions (args) {
         } else if (args[j] === "-skipLines"){
             j++;
             options["skipLines"] = Number(args[j]);
+        } else if (args[j] === "-maxClientsPerServer"){
+            j++;
+            options["maxClientsPerServer"] = Number(args[j]);
         } else if (args[j] === "-script"){
             j++;
             options["xQueryScript"] = args[j];

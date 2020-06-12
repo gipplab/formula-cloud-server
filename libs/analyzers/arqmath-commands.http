@@ -4,7 +4,7 @@ Accept: text/plain
 DELETE localhost:9200/arqmath-data
 ###
 # Setup mapping for the new index arqmath data
-PUT localhost:9200/arqmath
+PUT localhost:9200/test
 Content-Type: application/json
 
 {

@@ -1,6 +1,7 @@
 const cp = require('child_process');
 const path = require('path');
 
+let allChildProcessPool = {};
 let childProcessPool = {};
 let childProcessPortPool = {};
 let childProcessFreedPortsPool = [];
@@ -151,6 +152,9 @@ let getBaseXProcess = function(resolve, database, xQueryScript) {
                 childProcessPortPool[database] = 1984 + Object.keys(childProcessPool).length;
             }
         }
+        if ( !allChildProcessPool[database] || allChildProcessPool[database].length === 0 ){
+            allChildProcessPool[database] = [];
+        }
         childProcessPool[database] = [];
         const childProcess = cp.fork(
             path.join(__dirname, 'basex-connector.js'),
@@ -160,6 +164,7 @@ let getBaseXProcess = function(resolve, database, xQueryScript) {
                 database
             ]
         );
+        allChildProcessPool[database].push(childProcess);
         childProcess.on('message', (msg) => {
             handleMessage(childProcess, resolve, database, msg);
         });
@@ -181,6 +186,7 @@ let shutdownBaseXDBClient = function(resolve, database) {
         }));
     }
     Promise.all(promisMem).then(() => {
+        delete allChildProcessPool[database];
         resolve({
             status: "[SHUTDOWN COMPLETE]"
         });
@@ -207,9 +213,24 @@ let terminateChildProcesses = () => {
     console.log("Reqeuested shutdown for all workers.");
 };
 
+let getNumberOfRunningClientInstances = function(database) {
+    if ( !allChildProcessPool[database] ) return 0;
+    return allChildProcessPool[database].length - childProcessPool[database].length;
+}
+
+let getTotalNumberOfRunningInstances = function() {
+    let counter = 0;
+    for ( let [database, procs] of Object.entries(allChildProcessPool) ) {
+        counter += procs.length;
+    }
+    return counter;
+}
+
 module.exports = {
     getProcess: getProcess,
     getBaseXProcess: getBaseXProcess,
+    getNumberOfRunningClientInstances: getNumberOfRunningClientInstances,
+    getTotalNumberOfRunningInstances: getTotalNumberOfRunningInstances,
     shutdownBaseXDBClient: shutdownBaseXDBClient,
     terminate: terminateChildProcesses,
     setCallbackOnSuccess: setCallbackOnSuccess,

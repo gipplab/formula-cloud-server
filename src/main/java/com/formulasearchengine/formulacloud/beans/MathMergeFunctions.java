@@ -19,4 +19,12 @@ public enum MathMergeFunctions {
     public double calculate(double... a) {
         return mergeFunction.calculate(a);
     }
+
+    public static MathMergeFunctions getFunctionByName(String name) {
+        if ( name == null ) return MAX;
+        return Arrays.stream(MathMergeFunctions.values())
+                .filter( m -> m.name().toLowerCase().equals(name.toLowerCase()) )
+                .findAny()
+                .orElse(MAX);
+    }
 }

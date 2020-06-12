@@ -3,6 +3,7 @@ Accept: text/plain
 ###
 DELETE localhost:9200/arxiv-moi
 ###
+# curl -X PUT "http://localhost:9200/arxiv-moi" -H 'Content-Type: application/json' -d
 # Create zbmath-moi index
 PUT localhost:9200/arxiv-moi
 Content-Type: application/json

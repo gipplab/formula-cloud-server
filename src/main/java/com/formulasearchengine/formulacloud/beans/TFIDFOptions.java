@@ -19,7 +19,7 @@ public class TFIDFOptions {
     private double b = 0.95;
 
     public TFIDFOptions() {
-        this.tfOption = TermFrequencies.BM25;
+        this.tfOption = TermFrequencies.mBM25;
         this.idfOption = InverseDocumentFrequencies.IDF;
     }
 

@@ -91,7 +91,7 @@ public class RetrievedMOIDocuments {
                         }));
     }
 
-    private double calculateScore(MathElement math, String docID) {
+    protected double calculateScore(MathElement math, String docID) {
         MathDocument doc = documents.get(docID);
 
         // the total number of math elements in this document or

@@ -58,11 +58,15 @@ public class MOIResult extends MathElement implements Comparable<MOIResult> {
     @Override
     public String toString() {
         return String.format(
-                "docID: %7s; fID: %3s; Score: %6.4f; MOI: %s",
-                docID,
-                formulaID,
+                "% 6.4f %22s % 3d % 3d % 3d %s  /  %s  /  %s",
                 score,
-                super.toString()
+                super.getMoiMD5(),
+                super.getComplexity(),
+                super.getGlobalTF(),
+                super.getGlobalDF(),
+                super.getMoi(),
+                docID,
+                formulaID
         );
     }
 

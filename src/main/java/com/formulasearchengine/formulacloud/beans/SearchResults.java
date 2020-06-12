@@ -37,7 +37,9 @@ public class SearchResults {
     public String toString() {
         StringBuilder sb = new StringBuilder("Search results for the query: '");
         sb.append(searchQuery.length() > 50 ? searchQuery.substring(0, 50) + "..." : searchQuery);
-        sb.append("\n");
+        sb.append("'\n");
+
+        sb.append("Score  moiMD5                   C  GTF GDF  MOI / DocIDs / FormulaIDs\n");
         results.forEach( m -> sb.append(m.toString()).append("\n") );
         return sb.toString();
     }

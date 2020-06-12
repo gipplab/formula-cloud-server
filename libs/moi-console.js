@@ -16,7 +16,7 @@ const printSimpleCounterUpdateWithMem = function(counter) {
 }
 
 const printUpdate = function(
-    processedDocuments, childProcStats, queue
+    processedDocuments, childProcStats, queue, runningInstances
 ) {
     process.stdout.clearLine(0);
     process.stdout.cursorTo(0);
@@ -27,7 +27,8 @@ const printUpdate = function(
     let strMsg = "Requested Docs from BaseX: " + (processedDocuments.toLocaleString()) +
         " / jobs on hold: " + (queue.pending-1) +
         " / queue size: " + queue.size +
-        " / Total memory in use: " + used.toFixed(2) + "/" + total.toFixed(2) + " MB";
+        " / Total memory in use: " + used.toFixed(2) + "/" + total.toFixed(2) + " MB" +
+        " / Running Clients: " + runningInstances;
     process.stdout.write(strMsg);
 }
 

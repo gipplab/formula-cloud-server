@@ -32,7 +32,7 @@ public class FormulaCloudSearcherTest {
         sc.setMaxNumberOfResults(10);
         sc.setMaxGlobalDF(10_000);
         sc.setMinGlobalDF(10);
-        sc.setMinNumberOfDocHitsPerMOI(7);
+        sc.setMinNumberOfDocHitsPerMOI(4);
         sc.setNumberOfDocsToRetrieve(200);
         SearchResults results = searcher.search(sc);
         FormulaCloudSearcher.print(results.getResults(), System.out);
