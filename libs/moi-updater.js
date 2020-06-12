@@ -25,8 +25,8 @@ const fileLoader = new fsconnection.FSConnector(options.in, options.skipLines);
 
 let updateESIndex = async function ( data ) {
 // console.log("Retrieved result from docID " + data.docID + " ("+data.database+")");
-//     if ( data.mois.length > 0 )
-//         es.addMOIToTextIndex(data.mois, data.docID);
+     if ( data.mois.length > 0 )
+         es.addMOIToTextIndex(data.mois, data.docID);
 
     // console.log("Update: " + data.docID);
     // if ( data.mois.length === 0 ) {
