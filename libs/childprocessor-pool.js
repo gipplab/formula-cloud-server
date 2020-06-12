@@ -4,6 +4,7 @@ const path = require('path');
 let allChildProcessPool = {};
 let childProcessPool = {};
 let childProcessPortPool = {};
+let waitingForChildProcPromisses = {};
 let childProcessFreedPortsPool = [];
 
 let requestedShutdownMemory = [];
@@ -15,9 +16,14 @@ let usedMemory = {};
 let totalHeapMemory = {};
 
 let successfullCallback = undefined;
+let maxNumberOfParallelChildsPerProcess = 1;
 
 let setCallbackOnSuccess = function (callback) {
     successfullCallback = callback;
+}
+
+let setMaxClientsPerServer = function (maxNumber) {
+    maxNumberOfParallelChildsPerProcess = maxNumber;
 }
 
 let getMemoryUsage = function () {
@@ -43,8 +49,13 @@ let checkIfShutdownIsRequested = function(childProcess, callback, database) {
         });
         childProcess.send({shutdown: true});
     } else {
-        if ( childProcessPool[database] )
+        if ( childProcessPool[database] ) {
             childProcessPool[database].push(childProcess);
+            if ( waitingForChildProcPromisses[database] && waitingForChildProcPromisses[database].length > 0) {
+                let latestResolve = waitingForChildProcPromisses[database].pop();
+                latestResolve();
+            }
+        }
         callback(); // trigger promise object
     }
 }
@@ -134,42 +145,97 @@ let getProcess = function (resolve, processFile){
  * @param database {String}
  * @param xQueryScript {String} path to script
  */
-let getBaseXProcess = function(resolve, database, xQueryScript) {
-    if ( childProcessPool[database] && childProcessPool[database].length > 0 ) {
-        // client process exists
-        const childProcess = childProcessPool[database].pop();
-        // update listener
-        childProcess.removeAllListeners('message');
-        childProcess.on('message', (msg) => {
-            handleMessage(childProcess, resolve, database, msg);
-        });
-        return childProcess;
-    } else {
-        if ( !childProcessPortPool[database] ) {
-            if ( childProcessFreedPortsPool.length > 0 ) {
-                childProcessPortPool[database] = childProcessFreedPortsPool.pop();
-            } else {
-                childProcessPortPool[database] = 1984 + Object.keys(childProcessPool).length;
+let getBaseXProcess = async function(resolve, database, xQueryScript) {
+    return new Promise((innerResolve) => {
+        if ( childProcessPool[database] && childProcessPool[database].length > 0 ) {
+            // client process exists
+            const childProcess = childProcessPool[database].pop();
+            // update listener
+            childProcess.removeAllListeners('message');
+            childProcess.on('message', (msg) => {
+                handleMessage(childProcess, resolve, database, msg);
+            });
+            innerResolve(childProcess);
+            // return childProcess;
+        } else if ( getNumberOfRunningClientInstances(database) >= maxNumberOfParallelChildsPerProcess ) {
+            // in this case, we do nothing! we must wait until an old childProcess
+            // finished. When this happens, the waitForChildProcResolve is called
+            if ( !waitingForChildProcPromisses[database] ) waitingForChildProcPromisses[database] = [];
+            new Promise((awaitChildProcessComeback) => {
+                waitingForChildProcPromisses[database].push(awaitChildProcessComeback);
+            }).then(() => {
+                const childProcess = childProcessPool[database].pop();
+                // update listener
+                childProcess.removeAllListeners('message');
+                childProcess.on('message', (msg) => {
+                    handleMessage(childProcess, resolve, database, msg);
+                });
+                innerResolve(childProcess);
+            });
+        } else {
+            if ( !childProcessPortPool[database] ) {
+                if ( childProcessFreedPortsPool.length > 0 ) {
+                    childProcessPortPool[database] = childProcessFreedPortsPool.pop();
+                } else {
+                    childProcessPortPool[database] = 1984 + Object.keys(childProcessPool).length;
+                }
             }
+            if ( !allChildProcessPool[database] || allChildProcessPool[database].length === 0 ){
+                allChildProcessPool[database] = [];
+            }
+            childProcessPool[database] = [];
+            const childProcess = cp.fork(
+                path.join(__dirname, 'basex-connector.js'),
+                [
+                    childProcessPortPool[database],
+                    xQueryScript,
+                    database
+                ]
+            );
+            allChildProcessPool[database].push(childProcess);
+            childProcess.on('message', (msg) => {
+                handleMessage(childProcess, resolve, database, msg);
+            });
+            innerResolve(childProcess);
+            // return childProcess;
         }
-        if ( !allChildProcessPool[database] || allChildProcessPool[database].length === 0 ){
-            allChildProcessPool[database] = [];
-        }
-        childProcessPool[database] = [];
-        const childProcess = cp.fork(
-            path.join(__dirname, 'basex-connector.js'),
-            [
-                childProcessPortPool[database],
-                xQueryScript,
-                database
-            ]
-        );
-        allChildProcessPool[database].push(childProcess);
-        childProcess.on('message', (msg) => {
-            handleMessage(childProcess, resolve, database, msg);
-        });
-        return childProcess;
-    }
+    });
+
+    // if ( childProcessPool[database] && childProcessPool[database].length > 0 ) {
+    //     // client process exists
+    //     const childProcess = childProcessPool[database].pop();
+    //     // update listener
+    //     childProcess.removeAllListeners('message');
+    //     childProcess.on('message', (msg) => {
+    //         handleMessage(childProcess, resolve, database, msg);
+    //     });
+    //     return childProcess;
+    // } else {
+    //     if ( !childProcessPortPool[database] ) {
+    //         if ( childProcessFreedPortsPool.length > 0 ) {
+    //             childProcessPortPool[database] = childProcessFreedPortsPool.pop();
+    //         } else {
+    //             childProcessPortPool[database] = 1984 + Object.keys(childProcessPool).length;
+    //         }
+    //     }
+    //     if ( !allChildProcessPool[database] || allChildProcessPool[database].length === 0 ){
+    //         allChildProcessPool[database] = [];
+    //     }
+    //     childProcessPool[database] = [];
+    //     const childProcess = cp.fork(
+    //         path.join(__dirname, 'basex-connector.js'),
+    //         [
+    //             childProcessPortPool[database],
+    //             xQueryScript,
+    //             database
+    //         ]
+    //     );
+    //     allChildProcessPool[database].push(childProcess);
+    //     childProcess.on('message', (msg) => {
+    //         handleMessage(childProcess, resolve, database, msg);
+    //     });
+    //     return childProcess;
+    // }
 }
 
 let shutdownBaseXDBClient = function(resolve, database) {
@@ -226,12 +292,22 @@ let getTotalNumberOfRunningInstances = function() {
     return counter;
 }
 
+let getTotalNumberOfWaitForClientCalls = function() {
+    let counter = 0;
+    for ( let [database, procs] of Object.entries(waitingForChildProcPromisses) ) {
+        counter += procs.length;
+    }
+    return counter;
+}
+
 module.exports = {
     getProcess: getProcess,
     getBaseXProcess: getBaseXProcess,
     getNumberOfRunningClientInstances: getNumberOfRunningClientInstances,
     getTotalNumberOfRunningInstances: getTotalNumberOfRunningInstances,
+    getTotalNumberOfWaitForClientCalls: getTotalNumberOfWaitForClientCalls,
     shutdownBaseXDBClient: shutdownBaseXDBClient,
+    setMaxClientsPerServer: setMaxClientsPerServer,
     terminate: terminateChildProcesses,
     setCallbackOnSuccess: setCallbackOnSuccess,
     getMemoryUsage: getMemoryUsage

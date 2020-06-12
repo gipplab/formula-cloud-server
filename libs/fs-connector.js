@@ -8,6 +8,7 @@ let FsConnector = function (filePath, skipLines) {
     this._filepath = filePath;
     this._skipLines = skipLines;
     this._globalCounter = 0;
+    this._taskList = [];
 }
 
 FsConnector.prototype._getDocIDObject = function (line) {
@@ -117,9 +118,109 @@ FsConnector.prototype._processFilesInDir = async function(databaseName, dir, bib
     });
 }
 
+/**
+ *
+ * @param bib {Object}
+ * @param callback {Function}
+ * @param runningPromises {Array<Promise>}
+ * @returns {Generator<*, void, *>}
+ * @private
+ */
+FsConnector.prototype._databaseFileGenerator = function* (bib, callback, runningPromises) {
+    for ( let [db, files] of Object.entries(bib) ) {
+        let promise = new Promise(async(resolve) => {
+            while ( files.length > 0 ) {
+                await callback({
+                    database: db,
+                    title: files.pop()
+                });
+            }
+            // once all files from this DB were called, we are done
+            resolve();
+        }).then(() => {
+            // so this db finished, hence it's quite simple, we call the generator again
+            // and we dont care about the return value, we just trigger to add a new DB
+            this._databaseFileGenerator(bib, callback, runningPromises).next();
+        });
+        runningPromises.push(promise);
+        yield runningPromises;
+    }
+}
+
+FsConnector.prototype._taskListTrigger = function * () {
+    while ( this._taskList.length > 0 ) {
+        let resolve = this._taskList.pop();
+        yield resolve();
+    }
+}
+
+/**
+ *
+ * @param trigger {Generator}
+ * @param callback {Function}
+ * @param bib {Object}
+ * @private
+ */
+FsConnector.prototype._generateTaskList = function (trigger, callback, bib) {
+    const self = this;
+    let promiseList = [];
+    for ( let [db, files] of Object.entries(bib) ) {
+        let finishedDBResolve = undefined;
+        let dbFinishedPromise = new Promise((fdbResolve) => {
+            finishedDBResolve = fdbResolve;
+        });
+        promiseList.push(dbFinishedPromise);
+        new Promise((resolve) => {
+            self._taskList.push(resolve);
+        }).then(async () => {
+            // got triggered
+            console.log("\nStart processing files from DB " + db);
+            while ( files.length > 0 ) {
+                await callback({
+                    database: db,
+                    title: files.pop()
+                });
+            }
+            // done
+            await callback({
+                shutdown: true,
+                database: db
+            });
+            console.log("\nFinish processing files from DB " + db + ".");
+            // now we are done with this database! so it's time to trigger the next, if any
+            trigger.next();
+            // this db is finished, so trigger the promise that waits for this state
+            finishedDBResolve();
+        });
+        // the values are set inside the scope of the promise..
+        // hence we can get ridof the rest
+        delete bib[db];
+    }
+    return promiseList;
+}
+
+/**
+ *
+ * @param bib {Object}
+ * @param callback {Function}
+ * @param parallel {Number}
+ * @private
+ */
+FsConnector.prototype._startCallbackSequence = function (bib, callback, parallel) {
+    const taskTrigger = this._taskListTrigger();
+    const promiseList = this._generateTaskList(taskTrigger, callback, bib);
+    // kick of as many processes in parallel as we specified
+    for ( let i = 0; i < parallel; i++ ) {
+        let task = this._taskList.pop();
+        task();
+    }
+    // all triggered, the rest runs automatically
+    return promiseList;
+}
+
 FsConnector.prototype.getDocIdsFromFileNames = async function (parallel, callback) {
     const baseDir = this._filepath;
-    let self = this;
+    const self = this;
     let bib = {};
     return new Promise((resolve, reject) => {
         let processes = [];
@@ -134,28 +235,35 @@ FsConnector.prototype.getDocIdsFromFileNames = async function (parallel, callbac
             .then(() => {
                 Promise.all(processes).then(async () => {
                     console.log("\nFinally we got all files. We can start!");
-                    while ( Object.keys(bib).length > 0 ) {
-                        let counter = 0;
-                        for ( let [db, files] of Object.entries(bib) ) {
-                            if ( counter >= parallel ) break;
-                            counter++;
-                            if ( files.length > 0 ) {
-                                await callback({
-                                    database: db,
-                                    title: files.pop()
-                                });
-                            } else {
-                                delete bib[db];
-                                await callback({
-                                    shutdown: true,
-                                    database: db
-                                })
-                                console.log("\nFinished requesting files from DB " + db + "; " + Object.keys(bib).length + " databases left.");
-                            }
-                        }
-                    }
-                    console.log("Requested all docIDs");
-                    resolve();
+                    const tasksPromises = self._startCallbackSequence(bib, callback, parallel);
+                    Promise.all(tasksPromises)
+                        .then(() => {
+                            console.log("Requested all docIDs");
+                            resolve();
+                        });
+
+                    // while ( Object.keys(bib).length > 0 ) {
+                    //     let counter = 0;
+                    //     for ( let [db, files] of Object.entries(bib) ) {
+                    //         if ( counter >= parallel ) break;
+                    //         counter++;
+                    //         if ( files.length > 0 ) {
+                    //             await callback({
+                    //                 database: db,
+                    //                 title: files.pop()
+                    //             });
+                    //         } else {
+                    //             delete bib[db];
+                    //             await callback({
+                    //                 shutdown: true,
+                    //                 database: db
+                    //             })
+                    //             console.log("\nFinished requesting files from DB " + db + "; " + Object.keys(bib).length + " databases left.");
+                    //         }
+                    //     }
+                    // }
+                    // console.log("Requested all docIDs");
+                    // resolve();
                 });
             });
     });

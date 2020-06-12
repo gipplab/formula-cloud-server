@@ -16,7 +16,7 @@ const printSimpleCounterUpdateWithMem = function(counter) {
 }
 
 const printUpdate = function(
-    processedDocuments, childProcStats, queue, runningInstances
+    processedDocuments, childProcStats, queue, runningInstances, waitingForClientsLength
 ) {
     process.stdout.clearLine(0);
     process.stdout.cursorTo(0);
@@ -28,7 +28,8 @@ const printUpdate = function(
         " / jobs on hold: " + (queue.pending-1) +
         " / queue size: " + queue.size +
         " / Total memory in use: " + used.toFixed(2) + "/" + total.toFixed(2) + " MB" +
-        " / Running Clients: " + runningInstances;
+        " / Running Clients: " + runningInstances +
+        " / Currently " + waitingForClientsLength + " processes wait for clients.";
     process.stdout.write(strMsg);
 }
 

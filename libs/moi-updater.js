@@ -13,8 +13,6 @@ const options = optionLoader.loadOptions(process.argv);
 const es = new ESConnectorFactory.ESConnector(options);
 es.setIndex(options.index);
 
-const maxNumberOfClientsInstancesPerDBServer = options.maxClientsPerServer;
-
 // const basex = new baseXConnector.BaseXConnector();
 
 const basexQueue = new PQueue({
@@ -25,8 +23,8 @@ const fileLoader = new fsconnection.FSConnector(options.in, options.skipLines);
 
 let updateESIndex = async function ( data ) {
 // console.log("Retrieved result from docID " + data.docID + " ("+data.database+")");
-     if ( data.mois.length > 0 )
-         es.addMOIToTextIndex(data.mois, data.docID);
+    if (data.mois.length > 0)
+        es.addMOIToTextIndex(data.mois, data.docID);
 
     // console.log("Update: " + data.docID);
     // if ( data.mois.length === 0 ) {
@@ -37,14 +35,10 @@ let updateESIndex = async function ( data ) {
 }
 
 childProcs.setCallbackOnSuccess(updateESIndex);
+childProcs.setMaxClientsPerServer(options.maxClientsPerServer);
 
 let processedDocuments = options.skipLines;
 let handleIDChunk = async function ( doc ) {
-    let instancesRunning = 0;
-    if ( doc.database ) {
-        instancesRunning = childProcs.getNumberOfRunningClientInstances(doc.database);
-    }
-
     let queueAddedPromise = basexQueue.add(() => {
         return new Promise((resolve) => {
             if ( doc.shutdown ) {
@@ -53,13 +47,15 @@ let handleIDChunk = async function ( doc ) {
                 return;
             }
 
-            let childProcess = childProcs.getBaseXProcess(resolve, doc.database, options.xQueryScript);
-            let message = {
-                docID: doc.title
-            };
-            if ( doc.database ) message['database'] = doc.database;
+            childProcs.getBaseXProcess(resolve, doc.database, options.xQueryScript)
+                .then((childProcess) => {
+                    let message = {
+                        docID: doc.title
+                    };
+                    if ( doc.database ) message['database'] = doc.database;
 
-            childProcess.send(message);
+                    childProcess.send(message);
+                });
         }).then((msg) => {
             if ( msg && msg.status === "[SHUTDOWN COMPLETE]" ) {
                 // no update required.
@@ -69,22 +65,21 @@ let handleIDChunk = async function ( doc ) {
                     processedDocuments,
                     childProcs.getMemoryUsage(),
                     basexQueue,
-                    childProcs.getTotalNumberOfRunningInstances()
+                    childProcs.getTotalNumberOfRunningInstances(),
+                    childProcs.getTotalNumberOfWaitForClientCalls()
                 );
             }
         });
     });
 
-    // if the queue is full or there are too many child instances running per DB server
-    // the service must wait
-    if ( basexQueue.size < 10_000 && instancesRunning < maxNumberOfClientsInstancesPerDBServer-1 )
+    if ( basexQueue.size < 10_000 )
         return Promise.resolve();
     else return queueAddedPromise;
 }
 
 // es.loadDocumentIDs(handleIDChunk)
 // fileLoader.getDocIds(handleIDChunk)
-fileLoader.getDocIdsFromFileNames(options.parallel, handleIDChunk)
+fileLoader.getDocIdsFromFileNames(options.maxParallelServers, handleIDChunk)
     .then(() => {
         basexQueue.onIdle().then(async () => {
             await childProcs.terminate();

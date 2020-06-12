@@ -12,6 +12,7 @@ function loadOptions (args) {
         'searchQuery': "",
         'skipLines': 0,
         'maxClientsPerServer': 1,
+        'maxParallelServers': 4,
         'xQueryScript': 'libs/xquery/extractor.xq'
     };
 
@@ -44,6 +45,9 @@ function loadOptions (args) {
         } else if (args[j] === "-maxClientsPerServer"){
             j++;
             options["maxClientsPerServer"] = Number(args[j]);
+        } else if (args[j] === "-maxParallelServers"){
+            j++;
+            options["maxParallelServers"] = Number(args[j]);
         } else if (args[j] === "-script"){
             j++;
             options["xQueryScript"] = args[j];

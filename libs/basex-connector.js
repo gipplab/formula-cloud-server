@@ -127,13 +127,19 @@ process.on('message', async (message) => {
     });
 
     basexInstance.loadMOIs(message.docID, message.database)
-        .then((values, err) => {
+        .then(async (values, err) => {
             if (err) {
                 process.send({
                     status: '[ERROR]',
                     error: err,
                 });
             } else {
+                // let's test longer waiting times, just for debugging
+                // let's fake up to 2 seconds waiting time for each BaseX request
+                // for large DBs it might increase up to 10 seconds... (eg on arxiv)
+                // let waitTime = Math.floor(Math.random()*2000);
+                // await new Promise(r => setTimeout(r, waitTime));
+
                 process.send({
                     status: '[DONE]',
                     mois: values,
