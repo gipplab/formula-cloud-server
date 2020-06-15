@@ -243,8 +243,18 @@ ESConnector.prototype.addMOIToTextIndex = function(mathElements, docID) {
         this._updateCache.push(this._buildMOIs(mathElements, docID));
         this._addMOIToTextManualBulk(updateArray)
             .then((resp) => {
-                console.log("Updated chunk of docs.");
-                console.log(resp);
+                let respBody = resp.body;
+                if ( respBody.errors ) {
+                    console.log("Errors occurred during bulk operation. Listing errors...")
+                    respBody.items.forEach((item, idx) => {
+                        if ( item.error ) {
+                            console.log("Item " + idx + " failed because: ");
+                            console.log(item);
+                        }
+                    });
+                } else {
+                    console.log("Updated chunk of docs.");
+                }
                 updateArray.splice(0, updateArray.length);
                 updateArray = undefined;
             })
