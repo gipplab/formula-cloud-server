@@ -2,7 +2,7 @@ const { Client } = require('@elastic/elasticsearch');
 const crypto = require('crypto');
 const md5Hash = crypto.createHash('md5');
 
-const chunkSize = 1_000;
+const chunkSize = 5_000;
 
 const client = new Client({
     node: 'http://localhost:9200',
@@ -247,9 +247,8 @@ ESConnector.prototype.addMOIToTextIndex = function(mathElements, docID) {
                 if ( respBody.errors ) {
                     console.log("Errors occurred during bulk operation. Listing errors...")
                     respBody.items.forEach((item, idx) => {
-                        if ( item.status !== 200 ) {
-                            console.log("Item " + idx + " failed. Details: ");
-                            console.log(item);
+                        if ( item.update && item.update.error ) {
+                            console.log("Item " + idx + " failed because: " + item.update.error.reason);
                         }
                     });
                 } else {
