@@ -247,9 +247,8 @@ ESConnector.prototype.addMOIToTextIndex = function(mathElements, docID) {
                 if ( respBody.errors ) {
                     console.log("Errors occurred during bulk operation. Listing errors...")
                     respBody.items.forEach((item, idx) => {
-                        console.log(item);
-                        if ( item.error ) {
-                            console.log("Item " + idx + " failed because: ");
+                        if ( item.status !== 200 ) {
+                            console.log("Item " + idx + " failed. Details: ");
                             console.log(item);
                         }
                     });
