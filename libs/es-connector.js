@@ -2,7 +2,7 @@ const { Client } = require('@elastic/elasticsearch');
 const crypto = require('crypto');
 const md5Hash = crypto.createHash('md5');
 
-const chunkSize = 10_000;
+const chunkSize = 1_000;
 
 const client = new Client({
     node: 'http://localhost:9200',
@@ -120,6 +120,27 @@ ESConnector.prototype._addMOIToText = async function (dataArray) {
     });
 }
 
+ESConnector.prototype._addMOIToTextManualBulk = async function(dataArray) {
+    const body = dataArray.flatMap(element => [
+        {
+            update: {
+                _index: index,
+                _id: element.docID
+            }
+        },
+        {
+            doc: {
+                moi: element.mathElements
+            }
+        }
+    ]);
+
+    return client.bulk({
+        refresh: true,
+        body
+    });
+}
+
 ESConnector.prototype._addMOIFormulaIDs = async function (data) {
     const body = Object.keys(data).flatMap(moiMD5 => [
         {
@@ -220,7 +241,7 @@ ESConnector.prototype.addMOIToTextIndex = function(mathElements, docID) {
     } else {
         let updateArray = this._updateCache.splice(0, chunkSize);
         this._updateCache.push(this._buildMOIs(mathElements, docID));
-        this._addMOIToText(updateArray)
+        this._addMOIToTextManualBulk(updateArray)
             .then((resp) => {
                 console.log("Updated chunk of docs.");
                 console.log(resp);
