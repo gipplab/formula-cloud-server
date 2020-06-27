@@ -1,0 +1,19 @@
+<math xmlns="http://www.w3.org/1998/Math/MathML"
+      xmlns:xlink="http://www.w3.org/1999/xlink"
+      alttext="\\sqrt{x}"
+      class="ltx_Math"
+      display="inline"
+      id="p1.1.m1.1">
+   <semantics id="p1.1.m1.1a">
+      <msqrt id="p1.1.m1.1.1" xref="p1.1.m1.1.1.cmml">
+         <mi id="p1.1.m1.1.1.2" xref="p1.1.m1.1.1.2.cmml">x</mi>
+      </msqrt>
+      <annotation-xml encoding="MathML-Content" id="p1.1.m1.1b">
+         <apply id="p1.1.m1.1.1.cmml" xref="p1.1.m1.1.1">
+            <root id="p1.1.m1.1.1a.cmml" xref="p1.1.m1.1.1"/>
+            <ci id="p1.1.m1.1.1.2.cmml" xref="p1.1.m1.1.1.2">𝑥</ci>
+         </apply>
+      </annotation-xml>
+      <annotation encoding="application/x-tex" id="p1.1.m1.1c">\sqrt{x}</annotation>
+   </semantics>
+</math>

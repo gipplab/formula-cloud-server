@@ -146,7 +146,7 @@ let getProcess = function (resolve, processFile){
  * @param xQueryScript {String} path to script
  */
 let getBaseXProcess = async function(resolve, database, xQueryScript) {
-    return new Promise((innerResolve) => {
+    return new Promise(async (innerResolve) => {
         if ( childProcessPool[database] && childProcessPool[database].length > 0 ) {
             // client process exists
             const childProcess = childProcessPool[database].pop();
@@ -196,6 +196,7 @@ let getBaseXProcess = async function(resolve, database, xQueryScript) {
             childProcess.on('message', (msg) => {
                 handleMessage(childProcess, resolve, database, msg);
             });
+            await new Promise(r => setTimeout(r, 2000));
             innerResolve(childProcess);
             // return childProcess;
         }

@@ -9,7 +9,6 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.TextNode;
 import org.jsoup.parser.Parser;
-import org.jsoup.select.Elements;
 
 import java.util.Base64;
 import java.util.LinkedList;
@@ -192,9 +191,9 @@ public class MOIConverter {
         sb.append(">");
     }
 
-    private static final Pattern MATH_PATTERN = Pattern.compile("<math.*?>\\s*(.*?)\\s*</math>");
-    private static final Pattern SEMANTICS_PATTERN = Pattern.compile("<semantics.*?>\\s*(.*?)\\s*</semantics>");
-    private static final Pattern ANNOTATION_PATTERN = Pattern.compile("<annotation.*?>.*?</annotation>");
+    private static final Pattern MATH_PATTERN = Pattern.compile("<math.*?>\\s*(.*?)\\s*</math>", Pattern.DOTALL);
+    private static final Pattern SEMANTICS_PATTERN = Pattern.compile("<semantics.*?>\\s*(.*?)\\s*</semantics>", Pattern.DOTALL);
+    private static final Pattern ANNOTATION_PATTERN = Pattern.compile("<annotation.*?>.*?</annotation>", Pattern.DOTALL);
 
     public static String mmlToString(String mml) {
         mml = preprocessMML(mml);
@@ -221,7 +220,7 @@ public class MOIConverter {
     }
 
     private static boolean isLeaf(Element e) {
-        if ( e.childNodeSize() <= 1 ) {
+        if ( e.childNodeSize() == 1 ) {
             return e.childNode(0) instanceof TextNode;
         } else return false;
     }

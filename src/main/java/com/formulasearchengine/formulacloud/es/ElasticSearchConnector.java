@@ -9,6 +9,7 @@ import com.formulasearchengine.formulacloud.data.RetrievedMOIDocuments;
 import com.formulasearchengine.formulacloud.data.SearchConfig;
 import com.formulasearchengine.formulacloud.util.MOIConverter;
 import org.apache.http.HttpHost;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.search.join.ScoreMode;
@@ -17,6 +18,7 @@ import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.core.CountRequest;
 import org.elasticsearch.client.core.CountResponse;
@@ -30,13 +32,14 @@ import java.util.*;
 
 /**
  * The connection to the elastic searcher server.
+ *
  * @author Andre Greiner-Petter
  */
 public class ElasticSearchConnector {
     private static final Logger LOG = LogManager.getLogger(ElasticSearchConnector.class.getName());
 
-    private static final String[] INCLUDE_FIELDS = new String[] {"title", "moi"};
-    private static final String[] EXCLUDE_FIELDS = new String[] {"content"};
+    private static final String[] INCLUDE_FIELDS = new String[]{"title", "moi"};
+    private static final String[] EXCLUDE_FIELDS = new String[]{"content"};
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -47,9 +50,10 @@ public class ElasticSearchConnector {
      * Before the es connection can be used, you need to call
      * {@link #start()} to initiate the connection. Use {@link #stop()}
      * to stop the connection to es.
+     *
      * @param config the connection configuration
      */
-    public ElasticSearchConnector(ElasticsearchConfig config){
+    public ElasticSearchConnector(ElasticsearchConfig config) {
         this.config = config;
     }
 
@@ -61,8 +65,8 @@ public class ElasticSearchConnector {
     /**
      * Initiates the connection to the server
      */
-    public void start(){
-        if (client != null){
+    public void start() {
+        if (client != null) {
             LOG.info("Restart elasticsearch connection.");
             stop();
         }
@@ -75,14 +79,23 @@ public class ElasticSearchConnector {
                                 config.getElasticsearchPort(),
                                 "http"
                         )
-                )
+                ).setRequestConfigCallback(
+                        new RestClientBuilder.RequestConfigCallback() {
+                            @Override
+                            public RequestConfig.Builder customizeRequestConfig(
+                                    RequestConfig.Builder requestConfigBuilder) {
+                                return requestConfigBuilder
+                                        .setConnectTimeout(10_000)
+                                        .setSocketTimeout(180_000);
+                            }
+                        })
         );
     }
 
     /**
      * Stops the connection to the server.
      */
-    public void stop(){
+    public void stop() {
         try {
             client.close();
         } catch (IOException e) {
@@ -97,7 +110,7 @@ public class ElasticSearchConnector {
 
     public MathElement getMathElementByMD5(String index, String md5) {
         try {
-            if ( !index.endsWith("moi") ) index = index + "-moi";
+            if (!index.endsWith("moi")) index = index + "-moi";
             GetRequest getRequest = new GetRequest(index, md5);
             GetResponse response = client.get(getRequest, RequestOptions.DEFAULT);
 
@@ -109,17 +122,20 @@ public class ElasticSearchConnector {
         }
     }
 
-    public Map<String, MathElement> getGlobalMathElements(String index, Collection<MathElement> expressions) {
-        if ( !index.endsWith("moi") ) index = index + "-moi";
+    public Map<String, MathElement> getGlobalMathElements(String index, Collection<MathElement> expressions)
+            throws IOException {
+        if (!index.endsWith("moi")) index = index + "-moi";
         Map<String, MathElement> md5Mapping = new HashMap<>();
         MultiGetRequest multiGetRequest = new MultiGetRequest();
 
-        for ( MathElement MathElement : expressions ) {
+        for (MathElement MathElement : expressions) {
             multiGetRequest.add(index, MathElement.getMoiMD5());
             md5Mapping.put(MathElement.getMoiMD5(), MathElement);
         }
 
+
         try {
+            LOG.info("Start requesting " + expressions.size() + " MOI from ES.");
             MultiGetResponse mgr = client.mget(multiGetRequest, RequestOptions.DEFAULT);
             MultiGetItemResponse[] responses = mgr.getResponses();
 
@@ -129,20 +145,21 @@ public class ElasticSearchConnector {
                 updateMathElementFromResponse(mathElement, response);
             }
         } catch (IOException ioe) {
-            LOG.error("Unable to retrieve multi MOIs from ES.", ioe);
+            LOG.error("Unable to retrieve multi MOIs from ES.");
+            throw ioe;
         }
         return md5Mapping;
     }
 
     private void updateMathElementFromResponse(MathElement mathElement, MultiGetItemResponse response) {
-        if ( response.getFailure() != null ) {
+        if (response.getFailure() != null) {
             LOG.warn("Unable to retrieve MOI for " + mathElement.getMoiMD5() + "\nReason: "
                     + response.getFailure().getMessage());
         } else updateMathElementFromResponse(mathElement, response.getResponse());
     }
 
     private void updateMathElementFromResponse(MathElement mathElement, GetResponse response) {
-        if ( !response.isExists() ) {
+        if (!response.isExists()) {
             LOG.warn("Unable to find MOI for: " + mathElement.getMoiMD5());
             return;
         }
@@ -152,14 +169,14 @@ public class ElasticSearchConnector {
         int df = Integer.parseInt(fields.get("df").toString());
         String moi = fields.get("moi").toString();
 
-        LOG.debug("Retrieved: " + moi);
+        LOG.trace("Retrieved: " + moi);
         mathElement.setComplexity(complexity);
         mathElement.setGlobalTermFrequency(tf);
         mathElement.setGlobalDocumentFrequency(df);
         mathElement.setMOI(moi);
     }
 
-    public SearchRequest createEnhancedSearchRequest(SearchConfig config){
+    public SearchRequest createEnhancedSearchRequest(SearchConfig config) {
         // must match the given searchQuery at least 50% (the half of words must match)
         MatchQueryBuilder matchQB = QueryBuilders.matchQuery("content", config.getSearchQuery());
         matchQB.minimumShouldMatch("50%");
@@ -192,41 +209,37 @@ public class ElasticSearchConnector {
         return searchRequest;
     }
 
-    public RetrievedMOIDocuments searchDocuments(@NotNull SearchConfig searchConfig) {
+    public RetrievedMOIDocuments searchDocuments(@NotNull SearchConfig searchConfig) throws IOException {
         List<MathDocument> mathDocuments = new LinkedList<>();
         Map<String, MathElement> mathElementMap = new HashMap<>();
 
         LOG.info("Requesting documents from " + searchConfig.getDb());
         SearchRequest request = createEnhancedSearchRequest(searchConfig);
-        try {
-            SearchResponse searchResponse = client.search(request, RequestOptions.DEFAULT);
-            SearchHit[] hits = searchResponse.getHits().getHits();
-            for ( SearchHit hit : hits ) {
-                DocumentSearchResult docHit = OBJECT_MAPPER.readValue(hit.getSourceAsString(), DocumentSearchResult.class);
-                List<MathElement> mathElementsOfDoc = new LinkedList<>();
-                for ( DocumentSearchResultMOI m : docHit.getMois() ) {
-                    MathElement currMathElement = mathElementMap.computeIfAbsent(
-                            m.getMoiMD5(),
-                            (key) -> new MathElement(m.getMoiMD5())
-                    );
-                    currMathElement.addLocalFrequency(docHit.getTitle(), m.getLocalTF());
-                    mathElementsOfDoc.add(currMathElement);
-                }
-                MathDocument mdoc = new MathDocument(
-                        docHit.getTitle(),
-                        hit.getScore(),
-                        mathElementsOfDoc
+        SearchResponse searchResponse = client.search(request, RequestOptions.DEFAULT);
+        SearchHit[] hits = searchResponse.getHits().getHits();
+        for (SearchHit hit : hits) {
+            DocumentSearchResult docHit = OBJECT_MAPPER.readValue(hit.getSourceAsString(), DocumentSearchResult.class);
+            List<MathElement> mathElementsOfDoc = new LinkedList<>();
+            for (DocumentSearchResultMOI m : docHit.getMois()) {
+                MathElement currMathElement = mathElementMap.computeIfAbsent(
+                        m.getMoiMD5(),
+                        (key) -> new MathElement(m.getMoiMD5())
                 );
-                mathDocuments.add(mdoc);
+                currMathElement.addLocalFrequency(docHit.getTitle(), m.getLocalTF());
+                mathElementsOfDoc.add(currMathElement);
             }
-
-            LOG.info("Retrieved and analyzed documents. Requesting global MOI information.");
-            // ok we have all, now we need to load the global information
-            getGlobalMathElements(searchConfig.getDb().toESString(), mathElementMap.values());
-            mathDocuments.forEach( MathDocument::init );
-        } catch (IOException ioe) {
-            LOG.fatal("Unexpected error occurred. Returning empty results.", ioe);
+            MathDocument mdoc = new MathDocument(
+                    docHit.getTitle(),
+                    hit.getScore(),
+                    mathElementsOfDoc
+            );
+            mathDocuments.add(mdoc);
         }
+
+        LOG.info("Retrieved and analyzed documents. Requesting global MOI information.");
+        // ok we have all, now we need to load the global information
+        getGlobalMathElements(searchConfig.getDb().toESString(), mathElementMap.values());
+        mathDocuments.forEach(MathDocument::init);
 
         return new RetrievedMOIDocuments(mathDocuments, mathElementMap.values(), searchConfig);
     }
@@ -234,6 +247,7 @@ public class ElasticSearchConnector {
     /**
      * Returns the total number of non-empty documents in the given index.
      * Non-empty means, there must be at least one MOI in the document.
+     *
      * @param index the index, see {@link com.formulasearchengine.formulacloud.data.Databases}
      * @return the number of documents with at least one MOI
      */

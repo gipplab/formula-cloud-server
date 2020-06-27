@@ -8,6 +8,40 @@
     <artifactId>formula-cloud-server</artifactId>
     <version>1.0-SNAPSHOT</version>
 
+    <name>FormulaCloud Server</name>
+    <description>The API backbone implementation to search for Mathematical Objects of Interest (MOI)</description>
+    <url>https://github.com/ag-gipp/formula-cloud-server</url>
+    <inceptionYear>2020</inceptionYear>
+
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <organization>
+        <name>University of Wuppertal</name>
+        <url>https://www.uni-wuppertal.de/en/</url>
+    </organization>
+
+    <developers>
+        <developer>
+            <name>André Greiner-Petter</name>
+            <email>andre.greiner-petter@zbmath.org</email>
+            <organization>University of Wuppertal</organization>
+            <organizationUrl>https://www.uni-wuppertal.de/en/</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git@github.com:ag-gipp/formula-cloud-server.git</connection>
+        <developerConnection>scm:git:git@github.com:ag-gipp/formula-cloud-server.git</developerConnection>
+        <url>git@github.com:ag-gipp/formula-cloud-server.git</url>
+        <tag>HEAD</tag>
+    </scm>
+
     <properties>
         <java.version>11</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -23,7 +57,7 @@
         <log4j2.version>2.13.2</log4j2.version>
         <jackson.version>2.10.1</jackson.version>
         <jcommander.version>1.78</jcommander.version>
-        <elasticsearch.version>7.6.1</elasticsearch.version>
+        <elasticsearch.version>7.8.0</elasticsearch.version>
     </properties>
 
     <dependencies>
@@ -87,6 +121,5 @@
             <artifactId>jsoup</artifactId>
             <version>1.13.1</version>
         </dependency>
-
     </dependencies>
 </project>

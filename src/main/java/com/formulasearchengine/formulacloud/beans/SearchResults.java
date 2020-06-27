@@ -16,7 +16,7 @@ public class SearchResults {
     @JsonProperty("query")
     private String searchQuery;
 
-    private SearchResults() {
+    protected SearchResults() {
         results = new LinkedList<>();
     }
 
@@ -39,8 +39,14 @@ public class SearchResults {
         sb.append(searchQuery.length() > 50 ? searchQuery.substring(0, 50) + "..." : searchQuery);
         sb.append("'\n");
 
-        sb.append("Score  moiMD5                   C  GTF GDF  MOI / DocIDs / FormulaIDs\n");
-        results.forEach( m -> sb.append(m.toString()).append("\n") );
+        sb.append("  #   Score   moiMD5                     C   GTF   GDF MOI / DocIDs / FormulaIDs\n");
+        int[] counter = new int[]{0};
+        results.stream()
+                .peek( m -> counter[0]++ )
+                .forEach( m -> {
+                    String c = String.format("% 3d: ", counter[0]);
+                    sb.append(c).append(m.toString()).append("\n");
+                } );
         return sb.toString();
     }
 }

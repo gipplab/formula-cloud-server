@@ -1,5 +1,6 @@
 package com.formulasearchengine.formulacloud;
 
+import com.formulasearchengine.formulacloud.beans.SearchError;
 import com.formulasearchengine.formulacloud.beans.SearchResults;
 import com.formulasearchengine.formulacloud.data.*;
 import com.formulasearchengine.formulacloud.es.ElasticSearchConnector;
@@ -8,6 +9,7 @@ import com.formulasearchengine.formulacloud.util.MOIConverter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
 import java.util.Scanner;
@@ -40,8 +42,13 @@ public class FormulaCloudSearcher {
     }
 
     public SearchResults search(SearchConfig searchConfig) {
-        RetrievedMOIDocuments retrievedDocs = this.elasticsearch.searchDocuments(searchConfig);
-        return new SearchResults(searchConfig.getSearchQuery(), retrievedDocs.getOrderedScoredMOIs());
+        try {
+            RetrievedMOIDocuments retrievedDocs = this.elasticsearch.searchDocuments(searchConfig);
+            return new SearchResults(searchConfig.getSearchQuery(), retrievedDocs.getOrderedScoredMOIs());
+        } catch (IOException e) {
+            LOG.error("Unable to retrieve search results from elasticsearch", e);
+            return new SearchError(e.getMessage(), e);
+        }
     }
 
     public String getMathMLFromMOIString(String moiString) {

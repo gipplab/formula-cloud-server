@@ -49,6 +49,7 @@ let handleIDChunk = async function ( doc ) {
 
             childProcs.getBaseXProcess(resolve, doc.database, options.xQueryScript)
                 .then((childProcess) => {
+                    console.log("DB: " + doc.database);
                     let message = {
                         docID: doc.title
                     };

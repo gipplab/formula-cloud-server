@@ -79,4 +79,11 @@ public class MOIConverterTests {
         assertEquals(mml, MOIConverter.stringToMML(str));
     }
 
+    @Test
+    public void sqrtTest() throws Exception {
+        URL url = Resources.getResource("sqrt.mml");
+        String sqrtMML = Resources.toString(url, Charsets.UTF_8);
+        assertEquals("msqrt(mi:x)", MOIConverter.mmlToString(sqrtMML));
+    }
+
 }

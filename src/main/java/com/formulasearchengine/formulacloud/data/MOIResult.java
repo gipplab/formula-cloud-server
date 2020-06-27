@@ -58,7 +58,7 @@ public class MOIResult extends MathElement implements Comparable<MOIResult> {
     @Override
     public String toString() {
         return String.format(
-                "% 6.4f %22s % 3d % 3d % 3d %s  /  %s  /  %s",
+                "% 6.4f %22s % 3d % 5d % 5d %s  /  %s  /  %s",
                 score,
                 super.getMoiMD5(),
                 super.getComplexity(),

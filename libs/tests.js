@@ -1,5 +1,8 @@
 const myconsole = require('./moi-console');
 
+let group = "astro-ph9912451.xml".match(/^(.*?)\.[a-z]+$/m);
+console.log(group[1]);
+
 let bib = {
     "alpha": ["a", "b", "c"],
     "numbs": ["1", "2", "3"],

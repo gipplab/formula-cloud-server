@@ -35,6 +35,7 @@ public class FormulaCloudSearcherTest {
         sc.setMinNumberOfDocHitsPerMOI(4);
         sc.setNumberOfDocsToRetrieve(200);
         SearchResults results = searcher.search(sc);
-        FormulaCloudSearcher.print(results.getResults(), System.out);
+        System.out.println(results);
+//        FormulaCloudSearcher.print(results.getResults(), System.out);
     }
 }
