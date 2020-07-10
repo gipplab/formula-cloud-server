@@ -1,0 +1,39 @@
+GET http://localhost:9205/_cat/indices?v
+Accept: text/plain
+###
+GET http://localhost:9200/_cat/indices?v
+Accept: text/plain
+###
+DELETE localhost:9200/zbmath-moi/
+###
+PUT localhost:9200/zbmath-moi/_doc/test
+Content-Type: application/json
+
+{
+  "moi": "mi:F",
+  "complexity": 1,
+  "tf": 1,
+  "df": 1
+}
+###
+
+# Note that you must first create the index with correct settings, see libs/analyzers/moi-commands.http, before
+# you start reindexing
+POST localhost:9200/_reindex
+Content-Type: application/json
+
+{
+  "source": {
+    "remote": {
+      "host": "http://localhost:9205/",
+      "socket_timeout": "5m"
+    },
+    "index": "zbmath-moi",
+    "query": {
+      "match_all": {}
+    }
+  },
+  "dest": {
+    "index": "zbmath-moi"
+  }
+}

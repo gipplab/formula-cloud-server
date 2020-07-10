@@ -29,6 +29,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
 
 /**
  * The connection to the elastic searcher server.
@@ -37,6 +39,15 @@ import java.util.*;
  */
 public class ElasticSearchConnector {
     private static final Logger LOG = LogManager.getLogger(ElasticSearchConnector.class.getName());
+
+    private static final int MAX_MGET_CHUNK_SIZE = 50_000;
+    private static final int REQUEST_PARALLELISM = 1;
+
+    private static final TimeUnit FETCH_MOI_TIMEOUT_TIMEUNIT = TimeUnit.MINUTES;
+    private static final int FETCH_MOI_TIMEOUT = 5;
+
+    private static final int SOCKET_TIMEOUT = 360_000;
+    private static final int CONNECTION_TIMEOUT = 10_000;
 
     private static final String[] INCLUDE_FIELDS = new String[]{"title", "moi"};
     private static final String[] EXCLUDE_FIELDS = new String[]{"content"};
@@ -85,8 +96,8 @@ public class ElasticSearchConnector {
                             public RequestConfig.Builder customizeRequestConfig(
                                     RequestConfig.Builder requestConfigBuilder) {
                                 return requestConfigBuilder
-                                        .setConnectTimeout(10_000)
-                                        .setSocketTimeout(180_000);
+                                        .setConnectTimeout(CONNECTION_TIMEOUT)
+                                        .setSocketTimeout(SOCKET_TIMEOUT);
                             }
                         })
         );
@@ -122,33 +133,67 @@ public class ElasticSearchConnector {
         }
     }
 
-    public Map<String, MathElement> getGlobalMathElements(String index, Collection<MathElement> expressions)
+    public void fetchGlobalMOI(String index, Collection<MathElement> expressions)
             throws IOException {
         if (!index.endsWith("moi")) index = index + "-moi";
         Map<String, MathElement> md5Mapping = new HashMap<>();
-        MultiGetRequest multiGetRequest = new MultiGetRequest();
+        ForkJoinPool requestPool = new ForkJoinPool(REQUEST_PARALLELISM);
 
-        for (MathElement MathElement : expressions) {
-            multiGetRequest.add(index, MathElement.getMoiMD5());
-            md5Mapping.put(MathElement.getMoiMD5(), MathElement);
-        }
-
+//        final String ind = index;
+//        List<SingleGetRequest> gets = expressions.stream().map(m -> new SingleGetRequest(ind, m.getMoiMD5())).collect(Collectors.toList());
+//        MGetRequest mGetRequest = new MGetRequest();
+//        mGetRequest.setDocs(gets);
+//        ObjectMapper om = new ObjectMapper();
+//        om.writeValue(Paths.get("mgetRequest.json").toFile(), mGetRequest);
 
         try {
-            LOG.info("Start requesting " + expressions.size() + " MOI from ES.");
-            MultiGetResponse mgr = client.mget(multiGetRequest, RequestOptions.DEFAULT);
-            MultiGetItemResponse[] responses = mgr.getResponses();
+            MultiGetRequest[] mgetArray = new MultiGetRequest[(expressions.size()/(MAX_MGET_CHUNK_SIZE+1))+1];
+            int counter = 0;
+            int chunkId = 0;
+            LOG.info("Fetching " + expressions.size() + " MOI info in " + mgetArray.length + " chunks");
 
-            for (MultiGetItemResponse response : responses) {
-                String moiMD5 = response.getId();
-                MathElement mathElement = md5Mapping.get(moiMD5);
-                updateMathElementFromResponse(mathElement, response);
+            mgetArray[chunkId] = new MultiGetRequest();
+            for (MathElement MathElement : expressions) {
+                mgetArray[chunkId].add(index, MathElement.getMoiMD5());
+                md5Mapping.put(MathElement.getMoiMD5(), MathElement);
+                counter++;
+
+                if ( counter % MAX_MGET_CHUNK_SIZE == 0 ) {
+                    chunkId++;
+                    mgetArray[chunkId] = new MultiGetRequest();
+                }
             }
-        } catch (IOException ioe) {
-            LOG.error("Unable to retrieve multi MOIs from ES.");
-            throw ioe;
+
+            for ( int i = 0; i < mgetArray.length; i++ ) {
+                final int idx = i;
+                requestPool.submit(() -> {
+                    try {
+                        LOG.info("Reqeuesting chunk " + idx);
+                        fetchChunkOfGlobalMOI(mgetArray[idx], md5Mapping);
+                        LOG.info("Successfully fetched MOI info of chunk " + idx);
+                    } catch (IOException e) {
+                        LOG.error("Unable to fetch MOI info for chunk " + idx + ". Reason: " + e.getMessage());
+                    }
+                });
+            }
+
+            requestPool.shutdown();
+            requestPool.awaitTermination(FETCH_MOI_TIMEOUT, FETCH_MOI_TIMEOUT_TIMEUNIT);
+        } catch (InterruptedException e) {
+            LOG.error("Fetching MOI timed out.");
+            throw new IOException("Fetching MOI timed out", e);
         }
-        return md5Mapping;
+    }
+
+    private void fetchChunkOfGlobalMOI(MultiGetRequest mgetReq, Map<String, MathElement> md5Mapping) throws IOException {
+        MultiGetResponse mgr = client.mget(mgetReq, RequestOptions.DEFAULT);
+        MultiGetItemResponse[] responses = mgr.getResponses();
+
+        for (MultiGetItemResponse response : responses) {
+            String moiMD5 = response.getId();
+            MathElement mathElement = md5Mapping.get(moiMD5);
+            updateMathElementFromResponse(mathElement, response);
+        }
     }
 
     private void updateMathElementFromResponse(MathElement mathElement, MultiGetItemResponse response) {
@@ -238,7 +283,7 @@ public class ElasticSearchConnector {
 
         LOG.info("Retrieved and analyzed documents. Requesting global MOI information.");
         // ok we have all, now we need to load the global information
-        getGlobalMathElements(searchConfig.getDb().toESString(), mathElementMap.values());
+        fetchGlobalMOI(searchConfig.getDb().toESString(), mathElementMap.values());
         mathDocuments.forEach(MathDocument::init);
 
         return new RetrievedMOIDocuments(mathDocuments, mathElementMap.values(), searchConfig);

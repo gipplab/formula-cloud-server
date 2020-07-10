@@ -1,0 +1,44 @@
+### AVG complexity
+POST localhost:9200/arqmath-moi/_search
+Content-Type: application/json
+
+{
+  "size": 0,
+  "aggs": {
+    "average_complexity": {
+      "avg": {
+        "field": "complexity"
+      }
+    }
+  }
+}
+
+### MAX complexity
+POST localhost:9200/arqmath-moi/_search
+Content-Type: application/json
+
+{
+  "size": 0,
+  "aggs": {
+    "max_complexity": {
+      "max": {
+        "field": "complexity"
+      }
+    }
+  }
+}
+
+### AVG complexity
+POST localhost:9200/arqmath-moi/_search
+Content-Type: application/json
+
+{
+  "size": 0,
+  "aggs": {
+    "total_subexpressions": {
+      "sum": {
+        "field": "tf"
+      }
+    }
+  }
+}

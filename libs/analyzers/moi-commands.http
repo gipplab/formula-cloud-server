@@ -1,11 +1,11 @@
 GET http://localhost:9200/_cat/indices?v
 Accept: text/plain
 ###
-DELETE localhost:9200/arxiv-moi
+DELETE localhost:9200/zbmath-moi
 ###
 # curl -X PUT "http://localhost:9200/arxiv-moi" -H 'Content-Type: application/json' -d
 # Create zbmath-moi index
-PUT localhost:9200/arxiv-moi
+PUT localhost:9200/arxiv-moi-test
 Content-Type: application/json
 
 {
@@ -136,7 +136,7 @@ Content-Type: application/json
 }
 
 ###
-POST localhost:9200/arqmath-moi/_search
+POST localhost:9200/arxiv-moi/_search
 Content-Type: application/json
 
 {
@@ -156,7 +156,7 @@ Content-Type: application/json
 }
 
 ###
-GET localhost:9200/arqmath-moi/_doc/okbFpXNoPCdHP06riJ9Ulg==
+GET localhost:9200/zbmath-moi/_doc/okbFpXNoPCdHP06riJ9Ulg==
 Content-Type: application/json
 
 ###

@@ -1,0 +1,5 @@
+GET localhost:9200/arxiv-moi/_settings?pretty
+Content-Type: application/json
+###
+GET localhost:9200/arxiv-moi/_segments?pretty
+Content-Type: application/json

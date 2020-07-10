@@ -170,3 +170,11 @@ Content-Type: application/json
     }
   }
 }
+
+###
+GET localhost:9200/zbmath/_doc/2534322
+Content-Type: application/json
+
+###
+GET localhost:9200/zbmath-moi/_doc/rE2d6ApnspfccxHbXXHw0w==
+Content-Type: application/json

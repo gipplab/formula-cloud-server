@@ -1,3 +1,5 @@
+time curl -X GET localhost:9200/_mget -H 'Content-Type: application/json' -d @mgetRequest.json
+
 curl -X PUT "localhost:9200/arxiv?pretty" -H 'Content-Type: application/json' -d'
 {
   "settings": {
