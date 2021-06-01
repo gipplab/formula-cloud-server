@@ -1,5 +1,6 @@
 package com.formulasearchengine.formulacloud;
 
+import com.formulasearchengine.formulacloud.beans.DocumentSearchResult;
 import com.formulasearchengine.formulacloud.beans.SearchError;
 import com.formulasearchengine.formulacloud.beans.SearchResults;
 import com.formulasearchengine.formulacloud.data.*;
@@ -39,6 +40,15 @@ public class FormulaCloudSearcher {
     public void stop() {
         LOG.info("Stop elasticsearch client");
         this.elasticsearch.stop();
+    }
+
+    public List<DocumentSearchResult> searchForDocuments(SearchConfig searchConfig) {
+        try {
+            return this.elasticsearch.searchOnlyDocuments(searchConfig);
+        } catch (IOException ioe) {
+            LOG.error("Unable to retrieve documents for given query.", ioe);
+            return null;
+        }
     }
 
     public SearchResults search(SearchConfig searchConfig) {

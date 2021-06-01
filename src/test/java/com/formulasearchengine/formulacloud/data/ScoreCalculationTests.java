@@ -55,7 +55,6 @@ public class ScoreCalculationTests {
                                 (short)5
                         ),
                         "Doc1",
-                        "Formula1.1",
                         85.3141314314123
                 )
         );

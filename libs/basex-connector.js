@@ -137,8 +137,8 @@ process.on('message', async (message) => {
                 // let's test longer waiting times, just for debugging
                 // let's fake up to 2 seconds waiting time for each BaseX request
                 // for large DBs it might increase up to 10 seconds... (eg on arxiv)
-                let waitTime = Math.floor(Math.random()*1000);
-                await new Promise(r => setTimeout(r, waitTime));
+                // let waitTime = Math.floor(Math.random()*1000);
+                // await new Promise(r => setTimeout(r, waitTime));
 
                 process.send({
                     status: '[DONE]',

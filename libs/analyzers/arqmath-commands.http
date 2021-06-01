@@ -1,61 +1,109 @@
 GET http://localhost:9200/_cat/indices?v
 Accept: text/plain
+
 ###
-DELETE localhost:9200/arqmath-data
+DELETE localhost:9200/arqmath
+
 ###
-# Setup mapping for the new index arqmath data
-PUT localhost:9200/test
+GET localhost:9200/arqmath/_count
 Content-Type: application/json
 
 {
-  "settings": {
-    "analysis": {
-      "filter": {
-        "custom_english_stemmer": {
-          "type": "stemmer",
-          "name": "english"
-        }
-      },
-      "analyzer": {
-        "arqmath_analyzer": {
-          "type": "custom",
-          "tokenizer": "standard",
-          "char_filter": [
-            "html_strip"
-          ],
-          "filter": [
-            "asciifolding",
-            "lowercase",
-            "custom_english_stemmer"
-          ]
-        }
-      }
+    "query": {
+        "match_all": {}
     }
-  },
-  "mappings": {
-    "properties": {
-      "title": {
-        "type": "keyword"
-      },
-      "content": {
-        "type": "text",
-        "analyzer": "arqmath_analyzer"
-      },
-      "moi": {
-        "type": "nested",
+}
+
+###
+GET localhost:9200/arqmath/_search?pretty
+Content-Type: application/json
+
+{
+    "size": 2,
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "nested": {
+                        "path": "moi",
+                        "query": {
+                            "exists": {
+                                "field": "moi.moiMD5"
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}
+
+###
+# Setup mapping for the new index arqmath data
+PUT localhost:9200/arqmath
+Content-Type: application/json
+
+{
+    "settings": {
+        "number_of_shards": 3,
+        "number_of_replicas": 2,
+        "analysis": {
+            "filter": {
+                "custom_english_stemmer": {
+                    "type": "stemmer",
+                    "name": "english"
+                }
+            },
+            "analyzer": {
+                "arqmath_analyzer": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "char_filter": [
+                        "html_strip"
+                    ],
+                    "filter": [
+                        "asciifolding",
+                        "lowercase",
+                        "custom_english_stemmer"
+                    ]
+                }
+            }
+        }
+    },
+    "mappings": {
         "properties": {
-          "moiMD5": {
-            "type": "keyword",
-            "index": true
-          },
-          "localTermFrequency": {
-            "type": "integer",
-            "index": true
-          }
+            "title": {
+                "type": "integer"
+            },
+            "internalID": {
+                "type": "integer"
+            },
+            "url": {
+                "type": "keyword"
+            },
+            "content": {
+                "type": "text",
+                "analyzer": "arqmath_analyzer",
+                "index": true
+            },
+            "moi": {
+                "type": "nested",
+                "properties": {
+                    "moiMD5": {
+                        "type": "keyword",
+                        "index": true
+                    },
+                    "localTermFrequency": {
+                        "type": "integer",
+                        "index": true
+                    },
+                    "fid": {
+                        "type": "integer"
+                    }
+                }
+            }
         }
-      }
     }
-  }
 }
 
 ###
@@ -64,30 +112,127 @@ POST localhost:9200/_reindex
 Content-Type: application/json
 
 {
-  "source": { "index": "arqmath-data" },
-  "dest": { "index": "arqmath" }
+    "source": {
+        "index": "arqmath-data"
+    },
+    "dest": {
+        "index": "arqmath"
+    }
 }
 
 ###
 # Get the number of documents that contain at least one Math formula
-GET localhost:9200/zbmath-test/_count
+GET localhost:9200/arqmath/_count
 Content-Type: application/json
 
 {
-  "query": {
-    "bool": {
-      "must": [
-        {
-          "nested": {
-            "path": "moi",
-            "query": {
-              "exists": {
-                "field": "moi.moiMD5"
-              }
-            }
-          }
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "nested": {
+                        "path": "moi",
+                        "query": {
+                            "exists": {
+                                "field": "moi.moiMD5"
+                            }
+                        }
+                    }
+                }
+            ]
         }
-      ]
     }
-  }
+}
+
+###
+# Get the number of documents that contain at least one Math formula
+GET localhost:9200/arqmath/_search
+Content-Type: application/json
+
+{
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "nested": {
+                        "path": "moi",
+                        "query": {
+                            "bool": {
+                                "should": [
+                                    {
+                                        "term": {
+                                            "moi.fid": "25466142"
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}
+
+###
+# Get the number of documents that contain at least one Math formula
+GET localhost:9200/arqmath/_search
+Content-Type: application/json
+
+{
+    "size": 5,
+    "_source": [
+        "title",
+        "content"
+    ],
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "match": {
+                        "content": {
+                            "query": "Finding value of <math id=q_1>c</math> such that the range of the rational function <math id=q_2>f(x) = \\frac{x^2 + x + c}{x^2 + 2x + c}</math> does not contain <math id=q_3>[-1, -\\frac{1}{3}]</math>.\nI am comfortable when I am asked to calculate the range of a rational function, but how do we do the reverse? I came across this problem. If <math id=q_4>f(x)= \\frac{x^2 + x + c}{x^2 + 2x + c}</math> then find the value of <math id=q_5>c</math> for which the range of <math id=q_6>f(x)</math> does not contain <math id=q_7>[-1, -\\frac{1}{3}]</math>.",
+                            "fuzziness": "AUTO"
+                        }
+                    }
+                }
+            ]
+        ,
+            "filter": [
+                {
+                    "term": {
+                        "title": "2759764"
+                    }
+                }
+            ]
+        }
+    }
+}
+
+###
+# Get the number of documents that contain at least one Math formula
+GET localhost:9200/arqmath/_search
+Content-Type: application/json
+
+{
+    "min_score": 230.0152,
+    "size": 100,
+    "_source": [
+        "title",
+        "content"
+    ],
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "match": {
+                        "content": {
+                            "query": "Finding value of <math id=q_1>c</math> such that the range of the rational function <math id=q_2>f(x) = \\frac{x^2 + x + c}{x^2 + 2x + c}</math> does not contain <math id=q_3>[-1, -\\frac{1}{3}]</math>.\nI am comfortable when I am asked to calculate the range of a rational function, but how do we do the reverse? I came across this problem. If <math id=q_4>f(x)= \\frac{x^2 + x + c}{x^2 + 2x + c}</math> then find the value of <math id=q_5>c</math> for which the range of <math id=q_6>f(x)</math> does not contain <math id=q_7>[-1, -\\frac{1}{3}]</math>.",
+                            "fuzziness": "AUTO"
+                        }
+                    }
+                }
+            ]
+        }
+    }
 }

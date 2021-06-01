@@ -95,7 +95,7 @@ let handleGeneralProcessMessage = function(childProcess, resolve, msg) {
         totalHeapMemory[childProcess.pid] = Number(msg.memoryTotal);
     }
 
-    if ( msg.status.startsWith('[RUN]') ) {
+    if ( msg.status.startsWith('[RUN]') || msg.status.startsWith('[DONE INIT]') ) {
         // it's running now, take some time to finish.
         return;
     }
@@ -119,24 +119,34 @@ let handleGeneralProcessMessage = function(childProcess, resolve, msg) {
  *
  * @param resolve
  * @param processFile
+ * @param xQueryScript
  * @returns {ChildProcess|*}
  */
-let getProcess = function (resolve, processFile){
-    let childProcess = undefined;
-    if ( generalProcessQueue.length ) {
-        // reuse the child processes (pool size is defined by queue concurrency)
-        childProcess = generalProcessQueue.pop();
-        childProcess.removeAllListeners('message');
-    } else {
-        childProcess = cp.fork(path.join(__dirname, processFile));
-        console.log('Initialize new child process '+childProcess.pid);
-        allGeneralProcesses.push(childProcess);
-    }
-    // configure event handler: listening on messages from child process
-    childProcess.on('message', (msg) => {
-        handleGeneralProcessMessage(childProcess, resolve, msg);
+let getProcess = async function (resolve, processFile, xQueryScript){
+    return new Promise((res, rej) => {
+        let childProcess = undefined;
+        if ( generalProcessQueue.length ) {
+            // reuse the child processes (pool size is defined by queue concurrency)
+            childProcess = generalProcessQueue.pop();
+            childProcess.removeAllListeners('message');
+        } else {
+            childProcess = cp.fork(path.join(__dirname, processFile),
+                [
+                    1984 + allGeneralProcesses.length,
+                    xQueryScript,
+                    "out"
+                ]
+            );
+            console.log('Initialize new child process '+childProcess.pid);
+            allGeneralProcesses.push(childProcess);
+        }
+        // configure event handler: listening on messages from child process
+        childProcess.on('message', (msg) => {
+            handleGeneralProcessMessage(childProcess, resolve, msg);
+        });
+        res(childProcess);
+        // return childProcess;
     });
-    return childProcess;
 };
 
 /**

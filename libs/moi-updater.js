@@ -47,9 +47,10 @@ let handleIDChunk = async function ( doc ) {
                 return;
             }
 
-            childProcs.getBaseXProcess(resolve, doc.database, options.xQueryScript)
+            // childProcs.getBaseXProcess(resolve, doc.database, options.xQueryScript)
+            childProcs.getProcess(resolve, 'basex-connector.js', options.xQueryScript)
                 .then((childProcess) => {
-                    console.log("DB: " + doc.database);
+                    // console.log("DB: " + doc.database);
                     let message = {
                         docID: doc.title
                     };
@@ -79,8 +80,8 @@ let handleIDChunk = async function ( doc ) {
 }
 
 // es.loadDocumentIDs(handleIDChunk)
-// fileLoader.getDocIds(handleIDChunk)
-fileLoader.getDocIdsFromFileNames(options.maxParallelServers, handleIDChunk)
+fileLoader.getDocIds(handleIDChunk)
+// fileLoader.getDocIdsFromFileNames(options.maxParallelServers, handleIDChunk)
     .then(() => {
         basexQueue.onIdle().then(async () => {
             await childProcs.terminate();

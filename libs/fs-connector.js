@@ -12,9 +12,12 @@ let FsConnector = function (filePath, skipLines) {
 }
 
 FsConnector.prototype._getDocIDObject = function (line) {
-    let group = line.match(/^(\d+?),/m);
-    let docID = group[1];
-    return {title: docID};
+    let group = line.match(/^(\d+),(\d+),/m);
+    let docID = group[2];
+    return {
+        title: docID,
+        database: "out"
+    };
 }
 
 FsConnector.prototype._getMathElement = function (line) {

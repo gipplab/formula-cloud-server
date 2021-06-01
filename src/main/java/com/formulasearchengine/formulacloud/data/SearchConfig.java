@@ -49,7 +49,7 @@ public class SearchConfig {
     private boolean enableMathML = false;
 
     @JsonProperty("query")
-    private final String searchQuery;
+    private String searchQuery;
 
     public SearchConfig() {
         this.searchQuery = "";
@@ -165,5 +165,9 @@ public class SearchConfig {
 
     public String getSearchQuery() {
         return searchQuery;
+    }
+
+    public void setSearchQuery(String searchQuery) {
+        this.searchQuery = searchQuery;
     }
 }

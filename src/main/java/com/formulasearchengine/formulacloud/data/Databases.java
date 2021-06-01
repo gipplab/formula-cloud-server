@@ -52,4 +52,12 @@ public enum Databases {
                 .findFirst()
                 .orElse(null);
     }
+
+    public String preprocessSearchQuery(String query) {
+        if ( ARQMATH.equals(this) ) {
+            query = query.replaceAll("==|\n", " ");
+            query = query.replaceAll("\\s{2,}", " ").trim();
+        }
+        return query;
+    }
 }

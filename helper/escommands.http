@@ -317,6 +317,26 @@ Content-Type: application/json
   }
 }
 
+###
+GET localhost:9200/arqmath/_search?pretty
+Content-Type: application/json
+
+{
+  "size": 5,
+  "query": {
+      "match_phrase": {
+          "content": {
+              "query": "I am comfortable when I am asked to calculate the range of a rational function",
+              "slop": 5
+          }
+      }
+  }
+}
+
+### Test, just to see if there is any ID here
+GET localhost:9200/arqmath/_doc/2759764?pretty
+### Now let's test real...
+GET localhost:9200/arqmath/_doc/10528723?pretty
 
 ###
 GET localhost:9200/arqmath/_count

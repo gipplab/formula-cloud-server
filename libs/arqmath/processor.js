@@ -1,7 +1,7 @@
 var concurrencyLevel = 8;
-var data = '/home/andre/data/arqmath/posts/testData.csv';
+var data = '/home/andre/data/arqmath/posts/dataNew.csv';
 var esindex = 'arqmath';
-var skipSetup = false;
+var skipSetup = true;
 //var max = 1000;
 
 for (let j = 0; j < process.argv.length; j++) {
@@ -81,8 +81,21 @@ const getProcess = function (resolve) {
 
 const terminateChildProcesses = () => {
     console.log("Request shutdown workers.");
-    allProcesses.forEach(p => p.disconnect());
-    console.log("Workers are down.");
+    allProcesses.forEach(p => {
+        p.removeAllListeners('message');
+        p.on('message', (msg) => {
+            msg.status.startsWith('[DONE]');
+            console.log("[" + p.pid + "] Shutdown.")
+            p.disconnect();
+        })
+        p.send({
+            flush: true,
+            index: esindex
+        });
+    });
+
+    // allProcesses.forEach(p => p.disconnect());
+    console.log("Requested flushing all workers are down.");
 };
 
 console.log("Establish connection to elasticsearch.");
@@ -103,9 +116,10 @@ function lines(file) {
     });
 
     lineReader.on('line', function(line) {
-        let groups = line.match(/^(\d+),"?(.*?)"?$/m);
-        let id = groups[1];
-        let content = groups[2];
+        let groups = line.match(/^(\d+),(\d+),"?(.*?)"?$/m);
+        let localID = groups[1];
+        let externalID = groups[2];
+        let content = groups[3];
 
         queue.add(
             () => {
@@ -114,7 +128,12 @@ function lines(file) {
                     const childProcess = getProcess(resolve);
                     // send message to process
                     //console.log('Trigger child process '+childProcess.pid);
-                    childProcess.send({fileId: id, content: content, index: esindex});
+                    childProcess.send({
+                        fileId: externalID,
+                        internalID: localID,
+                        content: content,
+                        index: esindex
+                    });
                 });
                 return processPromise.then(() => {
                     // console.log("Files indexed: " + (counter++) + " / jobs on hold: " + (queue.pending-1) + "\r");
@@ -132,6 +151,7 @@ function lines(file) {
         console.log('Done! Send all lines to ES. Total lines: ' + counter);
         console.log("Added all elements to queue. Wait until all process finished.");
         console.log("");
+
         queue.onIdle().then(()=>{
             terminateChildProcesses();
         });

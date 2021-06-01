@@ -3,10 +3,7 @@ package com.formulasearchengine.formulacloud.es;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.formulasearchengine.formulacloud.beans.DocumentSearchResult;
 import com.formulasearchengine.formulacloud.beans.DocumentSearchResultMOI;
-import com.formulasearchengine.formulacloud.data.MathDocument;
-import com.formulasearchengine.formulacloud.data.MathElement;
-import com.formulasearchengine.formulacloud.data.RetrievedMOIDocuments;
-import com.formulasearchengine.formulacloud.data.SearchConfig;
+import com.formulasearchengine.formulacloud.data.*;
 import com.formulasearchengine.formulacloud.util.MOIConverter;
 import org.apache.http.HttpHost;
 import org.apache.http.client.config.RequestConfig;
@@ -22,6 +19,7 @@ import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.core.CountRequest;
 import org.elasticsearch.client.core.CountResponse;
+import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -31,6 +29,8 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * The connection to the elastic searcher server.
@@ -49,7 +49,7 @@ public class ElasticSearchConnector {
     private static final int SOCKET_TIMEOUT = 360_000;
     private static final int CONNECTION_TIMEOUT = 10_000;
 
-    private static final String[] INCLUDE_FIELDS = new String[]{"title", "moi"};
+    private static final String[] INCLUDE_FIELDS = new String[]{"title", "internalID", "moi"};
     private static final String[] EXCLUDE_FIELDS = new String[]{"content"};
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -139,13 +139,6 @@ public class ElasticSearchConnector {
         Map<String, MathElement> md5Mapping = new HashMap<>();
         ForkJoinPool requestPool = new ForkJoinPool(REQUEST_PARALLELISM);
 
-//        final String ind = index;
-//        List<SingleGetRequest> gets = expressions.stream().map(m -> new SingleGetRequest(ind, m.getMoiMD5())).collect(Collectors.toList());
-//        MGetRequest mGetRequest = new MGetRequest();
-//        mGetRequest.setDocs(gets);
-//        ObjectMapper om = new ObjectMapper();
-//        om.writeValue(Paths.get("mgetRequest.json").toFile(), mGetRequest);
-
         try {
             MultiGetRequest[] mgetArray = new MultiGetRequest[(expressions.size()/(MAX_MGET_CHUNK_SIZE+1))+1];
             int counter = 0;
@@ -198,14 +191,14 @@ public class ElasticSearchConnector {
 
     private void updateMathElementFromResponse(MathElement mathElement, MultiGetItemResponse response) {
         if (response.getFailure() != null) {
-            LOG.warn("Unable to retrieve MOI for " + mathElement.getMoiMD5() + "\nReason: "
+            LOG.debug("Unable to retrieve MOI for " + mathElement.getMoiMD5() + "\nReason: "
                     + response.getFailure().getMessage());
         } else updateMathElementFromResponse(mathElement, response.getResponse());
     }
 
     private void updateMathElementFromResponse(MathElement mathElement, GetResponse response) {
         if (!response.isExists()) {
-            LOG.warn("Unable to find MOI for: " + mathElement.getMoiMD5());
+            LOG.debug("Unable to find MOI for: " + mathElement.getMoiMD5());
             return;
         }
         Map<String, Object> fields = response.getSourceAsMap();
@@ -221,20 +214,41 @@ public class ElasticSearchConnector {
         mathElement.setMOI(moi);
     }
 
+    public SearchRequest createEnhancedARQMathRequest(SearchConfig config) {
+        String query = config.getDb().preprocessSearchQuery(config.getSearchQuery());
+        MatchQueryBuilder matchQB = QueryBuilders.matchQuery("content", query);
+        matchQB.fuzziness(Fuzziness.AUTO);
+
+        NestedQueryBuilder nestedQB = requireMOIQuery();
+
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        boolQuery.must(matchQB);
+        boolQuery.must(nestedQB);
+
+        Pattern p = Pattern.compile("<math.*?>.*</math>");
+        Matcher m = p.matcher(query);
+        while ( m.find() ) {
+            MatchQueryBuilder mathQuery = QueryBuilders.matchQuery("content", m.group(0));
+            mathQuery.boost(10f);
+//            mathQuery.boost(2f);
+            boolQuery.should(mathQuery);
+        }
+
+        boolQuery.minimumShouldMatch("50%");
+
+        return buildReqeuest(boolQuery, config);
+    }
+
     public SearchRequest createEnhancedSearchRequest(SearchConfig config) {
         // must match the given searchQuery at least 50% (the half of words must match)
         MatchQueryBuilder matchQB = QueryBuilders.matchQuery("content", config.getSearchQuery());
         matchQB.minimumShouldMatch("50%");
 
-        NestedQueryBuilder nestedQB = QueryBuilders.nestedQuery(
-                "moi",
-                QueryBuilders.existsQuery("moi.moiMD5"),
-                ScoreMode.Max
-        );
+        NestedQueryBuilder nestedQB = requireMOIQuery();
 
         // it should match the searchQuery with a given sloppiness
         MatchPhraseQueryBuilder matchPhraseQB = QueryBuilders.matchPhraseQuery("content", config.getSearchQuery());
-        matchPhraseQB.slop(10);
+        matchPhraseQB.slop(4);
 
         // connect it
         BoolQueryBuilder bqb = QueryBuilders.boolQuery();
@@ -242,8 +256,12 @@ public class ElasticSearchConnector {
         bqb.must(nestedQB);
         bqb.should(matchPhraseQB);
 
+        return buildReqeuest(bqb, config);
+    }
+
+    public SearchRequest buildReqeuest(QueryBuilder query, SearchConfig config) {
         SearchSourceBuilder sb = new SearchSourceBuilder();
-        sb.query(bqb);
+        sb.query(query);
         sb.size(config.getNumberOfDocsToRetrieve());
         sb.fetchSource(INCLUDE_FIELDS, EXCLUDE_FIELDS);
 
@@ -254,12 +272,38 @@ public class ElasticSearchConnector {
         return searchRequest;
     }
 
+    public NestedQueryBuilder requireMOIQuery() {
+        return QueryBuilders.nestedQuery(
+                "moi",
+                QueryBuilders.existsQuery("moi.moiMD5"),
+                ScoreMode.Max
+        );
+    }
+
+    public List<DocumentSearchResult> searchOnlyDocuments(@NotNull SearchConfig searchConfig) throws IOException {
+        LOG.info("Requesting documents from " + searchConfig.getDb());
+        SearchRequest request = searchConfig.getDb().equals(Databases.ARQMATH) ?
+                createEnhancedARQMathRequest(searchConfig) :
+                createEnhancedSearchRequest(searchConfig);
+        SearchResponse searchResponse = client.search(request, RequestOptions.DEFAULT);
+        SearchHit[] hits = searchResponse.getHits().getHits();
+        LinkedList<DocumentSearchResult> results = new LinkedList<>();
+        for ( SearchHit hit : hits ) {
+            DocumentSearchResult docHit = OBJECT_MAPPER.readValue(hit.getSourceAsString(), DocumentSearchResult.class);
+            docHit.setSearchScore(hit.getScore());
+            results.addLast(docHit);
+        }
+        return results;
+    }
+
     public RetrievedMOIDocuments searchDocuments(@NotNull SearchConfig searchConfig) throws IOException {
         List<MathDocument> mathDocuments = new LinkedList<>();
         Map<String, MathElement> mathElementMap = new HashMap<>();
 
         LOG.info("Requesting documents from " + searchConfig.getDb());
-        SearchRequest request = createEnhancedSearchRequest(searchConfig);
+        SearchRequest request = searchConfig.getDb().equals(Databases.ARQMATH) ?
+                createEnhancedARQMathRequest(searchConfig) :
+                createEnhancedSearchRequest(searchConfig);
         SearchResponse searchResponse = client.search(request, RequestOptions.DEFAULT);
         SearchHit[] hits = searchResponse.getHits().getHits();
         for (SearchHit hit : hits) {
@@ -271,6 +315,7 @@ public class ElasticSearchConnector {
                         (key) -> new MathElement(m.getMoiMD5())
                 );
                 currMathElement.addLocalFrequency(docHit.getTitle(), m.getLocalTF());
+                currMathElement.setFormulaID(m.getLocalFormulaIDs());
                 mathElementsOfDoc.add(currMathElement);
             }
             MathDocument mdoc = new MathDocument(

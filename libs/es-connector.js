@@ -2,7 +2,7 @@ const { Client } = require('@elastic/elasticsearch');
 const crypto = require('crypto');
 const md5Hash = crypto.createHash('md5');
 
-const chunkSize = 5_000;
+const chunkSize = 10_000;
 
 const client = new Client({
     node: 'http://localhost:9200',
@@ -192,7 +192,8 @@ ESConnector.prototype._buildMOIs = function(mathElements, docID) {
         mathElements: mathElements.map(mathElement => {
             return {
                 moiMD5: md5Hash.copy().update(mathElement.expression).digest('base64'),
-                localTermFrequency: mathElement.termFrequency
+                localTermFrequency: mathElement.termFrequency,
+                fid: mathElement.formulaIDs
             }
         })
     }

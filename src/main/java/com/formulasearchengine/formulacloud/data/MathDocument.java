@@ -38,7 +38,7 @@ public class MathDocument {
         mathElements = mathElements.stream()
                 .filter( m -> {
                     boolean valid = m.getComplexity() > 0 && m.getMoi() != null && !m.getMoi().isBlank();
-                    if ( !valid ) LOG.warn("Filter invalid MOI: " + m.getMoiMD5());
+                    if ( !valid ) LOG.debug("Filter invalid MOI: " + m.getMoiMD5());
                     return valid;
                 })
                 .collect(Collectors.toList());

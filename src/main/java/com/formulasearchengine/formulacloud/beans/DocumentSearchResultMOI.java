@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
 
+import java.util.List;
+
 /**
  * @author Andre Greiner-Petter
  */
@@ -13,6 +15,9 @@ public class DocumentSearchResultMOI {
 
     @JsonProperty("localTermFrequency")
     private Integer localTF;
+
+    @JsonProperty("fid")
+    private List<String> localFormulaIDs;
 
     public DocumentSearchResultMOI() {
         this.moiMD5 = null;
@@ -35,5 +40,15 @@ public class DocumentSearchResultMOI {
     @JsonSetter("localTermFrequency")
     public void setLocalTF(String localTF) {
         this.localTF = Integer.parseInt(localTF);
+    }
+
+    @JsonGetter("fid")
+    public List<String> getLocalFormulaIDs() {
+        return localFormulaIDs;
+    }
+
+    @JsonSetter("fid")
+    public void setLocalFormulaIDs(List<String> localFormulaIDs) {
+        this.localFormulaIDs = localFormulaIDs;
     }
 }

@@ -15,9 +15,6 @@ public class MOIResult extends MathElement implements Comparable<MOIResult> {
     @JsonProperty("docID")
     private final List<String> docID = new LinkedList<>();
 
-    @JsonProperty("formulaID")
-    private final List<String> formulaID = new LinkedList<>();
-
     @JsonProperty(value = "score", required = true)
     private double score;
 
@@ -25,19 +22,14 @@ public class MOIResult extends MathElement implements Comparable<MOIResult> {
         super("");
     }
 
-    public MOIResult(MathElement copy, String docID, String formulaID, double score) {
+    public MOIResult(MathElement copy, String docID, double score) {
         super(copy);
         this.docID.add(docID);
-        this.formulaID.add(formulaID);
         this.score = score;
     }
 
     public List<String> getDocID() {
         return docID;
-    }
-
-    public List<String> getFormulaID() {
-        return formulaID;
     }
 
     public double getScore() {
@@ -66,14 +58,14 @@ public class MOIResult extends MathElement implements Comparable<MOIResult> {
                 super.getGlobalDF(),
                 super.getMoi(),
                 docID,
-                formulaID
+                super.getFormulaID()
         );
     }
 
     public MOIResult merge(MOIResult reference, MathMergeFunctions mergeFunction) {
         this.score = mergeFunction.calculate(this.score, reference.score);
-        reference.formulaID.forEach( fid -> {
-            if ( !formulaID.contains(fid) ) formulaID.add(fid);
+        reference.getFormulaID().forEach( fid -> {
+            if ( !getFormulaID().contains(fid) ) getFormulaID().add(fid);
         });
         reference.docID.forEach( fid -> {
             if ( !docID.contains(fid) ) docID.add(fid);

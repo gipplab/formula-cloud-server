@@ -156,7 +156,7 @@ Content-Type: application/json
 }
 
 ###
-GET localhost:9200/zbmath-moi/_doc/okbFpXNoPCdHP06riJ9Ulg==
+GET localhost:9200/arqmath-moi/_doc/okbFpXNoPCdHP06riJ9Ulg==
 Content-Type: application/json
 
 ###

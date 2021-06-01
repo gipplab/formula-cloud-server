@@ -7,7 +7,7 @@ function loadOptions (args) {
         'minDF': 1,
         'minC': 1,
         'skipSetup': false,
-        'in': '/mnt/share/data/arqmath/posts/data.csv',
+        'in': '/mnt/share/data/arqmath/posts/dataNew.csv',
         'exact': false,
         'searchQuery': "",
         'skipLines': 0,

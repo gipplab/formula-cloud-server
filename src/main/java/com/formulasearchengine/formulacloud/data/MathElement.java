@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -26,11 +28,15 @@ public class MathElement {
     @JsonProperty("complexity")
     private short complexity;
 
+    @JsonProperty("formulaID")
+    private List<String> formulaID = new LinkedList();
+
     @JsonIgnore
     private final Map<String, Integer> localFrequencies;
 
     private MathElement() {
         this.localFrequencies = new HashMap<>();
+        this.formulaID = new LinkedList<>();
     }
 
     public MathElement(String moiMD5) {
@@ -53,6 +59,8 @@ public class MathElement {
         this.globalDF = copy.globalDF;
         this.complexity = copy.complexity;
         this.localFrequencies = copy.localFrequencies;
+        if ( copy.formulaID != null )
+            this.formulaID = new LinkedList<>(copy.formulaID);
     }
 
     public void addLocalFrequency(String docID, int localFrequency) {
@@ -73,6 +81,10 @@ public class MathElement {
 
     public void setComplexity(short complexity) {
         this.complexity = complexity;
+    }
+
+    public void setFormulaID(List<String> formulaID) {
+        this.formulaID = formulaID;
     }
 
     public String getMoiMD5() {
@@ -97,6 +109,10 @@ public class MathElement {
 
     public int getLocalTF(String docID) {
         return localFrequencies.getOrDefault(docID, 0);
+    }
+
+    public List<String> getFormulaID() {
+        return formulaID;
     }
 
     @JsonIgnore

@@ -123,8 +123,8 @@ public class RetrievedMOIDocuments {
         Collection<MOIResult> results = new LinkedList<>();
         scores.forEach((docID, score) -> results.add(
                 config.isEnableMathML() ?
-                        new MOIMathMLResult(tfidfMathElement, docID, "Nan", score) :
-                        new MOIResult(tfidfMathElement, docID, "NaN", score)
+                        new MOIMathMLResult(tfidfMathElement, docID, score) :
+                        new MOIResult(tfidfMathElement, docID, score)
                 )
         );
         return results.stream();
