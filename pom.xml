@@ -55,7 +55,7 @@
 
         <junit.version>5.6.0</junit.version>
         <log4j2.version>2.13.2</log4j2.version>
-        <jackson.version>2.10.1</jackson.version>
+        <jackson.version>2.12.6.1</jackson.version>
         <jcommander.version>1.78</jcommander.version>
         <elasticsearch.version>7.8.0</elasticsearch.version>
     </properties>
